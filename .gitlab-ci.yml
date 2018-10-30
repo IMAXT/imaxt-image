@@ -1,0 +1,35 @@
+stages:
+    - test
+    - deploy
+
+test:
+  stage: test
+  image: imaxt:latest
+  tags:
+    - python
+  except:
+    - master
+  script:
+    - pip install -r requirements_dev.txt
+    - export MPLBACKEND="Agg"
+    - python setup.py develop
+    - python setup.py flake8
+    - python setup.py build_sphinx -W
+    - python setup.py test
+
+deploy:
+  stage: deploy
+  image: imaxt:latest
+  tags:
+    - python
+  only:
+    - master
+  script:
+    - pip install -r requirements_dev.txt
+    - python setup.py build sdist
+    - scp -r dist eglez@apm14.ast.cam.ac.uk:~/
+  environment:
+    name: staging
+    url: http://apm14.ast.cam.ac.uk/imaxt/dist
+
+

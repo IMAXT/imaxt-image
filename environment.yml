@@ -1,0 +1,12 @@
+name: imaxt
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - astropy
+  - ipython
+  - matplotlib
+  - numpy
+  - python>=3.7
+  - scipy
+

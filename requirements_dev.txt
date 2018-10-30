@@ -1,0 +1,8 @@
+better-exceptions
+bumpversion
+sphinx
+sphinx-autodoc-typehints
+flake8
+autopep8
+isort
+mypy
