@@ -28,6 +28,7 @@ deploy:
     - pip install -r requirements_dev.txt
     - python setup.py sdist
     - mkdir dist/imaxt-image
+    - cp dist/*gz dist/imaxt-image/imaxt-image-latest.tar.gz
     - mv dist/*gz dist/imaxt-image/
     - scp -r dist eglez@apm14.ast.cam.ac.uk:~/
   environment:
