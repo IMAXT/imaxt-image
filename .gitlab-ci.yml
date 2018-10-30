@@ -26,7 +26,7 @@ deploy:
     - master
   script:
     - pip install -r requirements_dev.txt
-    - python setup.py build sdist
+    - python setup.py sdist
     - scp -r dist eglez@apm14.ast.cam.ac.uk:~/
   environment:
     name: staging
