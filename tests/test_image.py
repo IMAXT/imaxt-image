@@ -64,3 +64,8 @@ def test_image_notfound():
 def test_image_pathlib():
     im = TiffImage(Path('tests/16bit.s.tif'))
     assert im.shape == (10, 10)
+
+
+def test_metadata():
+    im = TiffImage(Path('tests/16bit.s.tif'))
+    assert im.metadata is None

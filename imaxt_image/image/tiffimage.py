@@ -49,6 +49,7 @@ class TiffImage:
         """
         return self.tiff.asarray(out='memmap')
 
+    @property
     def metadata(self) -> Dict:
         """Return image metadata.
 
