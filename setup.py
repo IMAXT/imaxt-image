@@ -9,6 +9,7 @@ requirements = [
     'matplotlib',
     'numpy',
     'scipy',
+    'xmltodict',
 ]
 
 setup_requirements = ['pytest-runner', 'flake8']

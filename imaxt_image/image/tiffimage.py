@@ -1,11 +1,13 @@
 """Read and write TIFF files."""
 
 from pathlib import Path
-from typing import Dict, Tuple, Union
+from typing import Tuple, Union
 
 import numpy as np
 
 from imaxt_image.external.tifffile import TiffFile
+from imaxt_image.image.metadata import Metadata
+from imaxt_image.image.omexmlmetadata import OMEXMLMetadata
 
 
 class TiffImage:
@@ -50,12 +52,19 @@ class TiffImage:
         return self.tiff.asarray(out='memmap')
 
     @property
-    def metadata(self) -> Dict:
+    def metadata(self) -> Metadata:
         """Return image metadata.
 
         Currently only returns ImageJ or OME-TIFF metadata.
         """
-        if self.tiff.is_ome:
-            return self.tiff.ome_metadata
-        elif self.tiff.is_imagej:
-            return self.tiff.imagej_metadata
+        description = self.tiff.pages[0].description
+        if 'OME' not in description:
+            return None
+        return Metadata(description)
+
+    @property
+    def omemetadata(self) -> OMEXMLMetadata:
+        description = self.tiff.pages[0].description
+        if 'OME' not in description:
+            return None
+        return OMEXMLMetadata(self.tiff.pages[0].description)
