@@ -30,7 +30,8 @@ deploy:
     - mkdir dist/imaxt-image
     - cp dist/*gz dist/imaxt-image/imaxt-image-latest.tar.gz
     - mv dist/*gz dist/imaxt-image/
-    - scp -r dist eglez@apm14.ast.cam.ac.uk:~/
+    - curl -X MKCOL 'http://imaxt.ast.cam.ac.uk/pip/imaxt-image'
+    - curl -XPUT http://imaxt.ast.cam.ac.uk/pip/imaxt-image/imaxt-image-0.1.0.tar.gz --data-binary @dist/imaxt-image-0.1.0.tar.gz
   environment:
     name: staging
     url: http://apm14.ast.cam.ac.uk/imaxt/dist
