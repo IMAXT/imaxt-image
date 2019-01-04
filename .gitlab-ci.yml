@@ -4,22 +4,22 @@ stages:
 
 test:
   stage: test
-  image: imaxt:latest
+  image: imaxt/jimaxt:latest
   tags:
     - python
   except:
     - master
   script:
-    - pip install -r requirements_dev.txt
+    - pip install --user -r requirements_dev.txt
     - export MPLBACKEND="Agg"
-    - python setup.py develop
+    - python setup.py develop --user
     - python setup.py flake8
     - python setup.py build_sphinx -W
     - python setup.py test
 
 deploy:
   stage: deploy
-  image: imaxt:latest
+  image: imaxt/jimaxt:latest
   tags:
     - python
   only:
@@ -27,7 +27,7 @@ deploy:
   except:
     - branches
   script:
-    - pip install -r requirements_dev.txt
+    - pip install --user -r requirements_dev.txt
     - python setup.py sdist
     - curl -X MKCOL $REPO/imaxt-image
     - curl -XPUT $REPO/imaxt-image/imaxt-image-0.2.1.tar.gz --data-binary @dist/imaxt-image-0.2.1.tar.gz
