@@ -514,6 +514,26 @@ Read a image stack from a sequence of TIFF files with a file name pattern:
 
 from __future__ import division, print_function
 
+import binascii
+import collections
+import concurrent.futures
+import datetime
+import enum
+import glob
+import io
+import json
+import math
+import os
+import pathlib
+import re
+import struct
+import sys
+import threading
+import time
+import warnings
+
+import numpy
+
 __version__ = '2018.11.6'
 __docformat__ = 'restructuredtext en'
 __all__ = ('imwrite', 'imsave', 'imread', 'imshow', 'memmap',
@@ -524,25 +544,7 @@ __all__ = ('imwrite', 'imsave', 'imread', 'imshow', 'memmap',
            'squeeze_axes', 'create_output', 'repeat_nd', 'format_size',
            'product', 'xml2dict', 'pformat', 'str2bytes', '_app_show')
 
-import sys
-import os
-import io
-import re
-import glob
-import math
-import time
-import json
-import enum
-import struct
-import pathlib
-import warnings
-import binascii
-import datetime
-import threading
-import collections
-import concurrent.futures
 
-import numpy
 
 try:
     import imagecodecs
@@ -6539,12 +6541,10 @@ class TIFF(object):
         # Map COMPRESSION to decompress functions
         if imagecodecs is None:
             import zlib
-            from . import lzw
             # import lzma
             return {
                 None: identityfunc,
                 1: identityfunc,
-                5: lzw.decompress,
                 8: zlib.decompress,
                 32946: zlib.decompress,
                 # 34925: lzma.decompress
