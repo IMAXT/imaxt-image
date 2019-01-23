@@ -33,9 +33,9 @@ class TiffImage:
             path = Path(path)
         self.path = path
         if self.path.exists():
-            self.tiff = TiffFile(f'{path}')
+            self.tiff = TiffFile(f"{path}")
         else:
-            raise FileNotFoundError(f'File not found: {self.path}')
+            raise FileNotFoundError(f"File not found: {self.path}")
 
     @property
     def shape(self) -> Tuple[int, ...]:
@@ -49,7 +49,7 @@ class TiffImage:
         This functions returns the full content of the file as
         a multidimensional array.
         """
-        return self.tiff.asarray(out='memmap')
+        return self.tiff.asarray(out="memmap")
 
     @property
     def metadata(self) -> Metadata:
@@ -58,13 +58,13 @@ class TiffImage:
         Currently only returns ImageJ or OME-TIFF metadata.
         """
         description = self.tiff.pages[0].description
-        if 'OME' not in description:
+        if "OME" not in description:
             return None
         return Metadata(description)
 
     @property
     def omemetadata(self) -> OMEXMLMetadata:
         description = self.tiff.pages[0].description
-        if 'OME' not in description:
+        if "OME" not in description:
             return None
         return OMEXMLMetadata(self.tiff.pages[0].description)
