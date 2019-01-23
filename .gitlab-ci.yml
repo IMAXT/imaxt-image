@@ -7,8 +7,6 @@ test:
   image: imaxt/jimaxt:latest
   tags:
     - python
-  except:
-    - master
   script:
     - pip install --user -r requirements_dev.txt
     - export MPLBACKEND="Agg"
