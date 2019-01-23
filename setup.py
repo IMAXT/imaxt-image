@@ -34,7 +34,7 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://gitlab.ast.cam.ac.uk/imaxt/imaxt-image",
-    version="0.2.1",
+    version="version='0.3.0'",
     zip_safe=False,
     python_requires=">=3.5",
 )

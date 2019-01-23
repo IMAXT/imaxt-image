@@ -28,6 +28,6 @@ deploy:
     - pip install --user -r requirements_dev.txt
     - python setup.py sdist
     - curl -X MKCOL $REPO/imaxt-image
-    - curl -XPUT $REPO/imaxt-image/imaxt-image-0.2.1.tar.gz --data-binary @dist/imaxt-image-0.2.1.tar.gz
+    - curl -XPUT $REPO/imaxt-image/imaxt-image-0.3.0.tar.gz --data-binary @dist/imaxt-image-0.3.0.tar.gz
 
 
