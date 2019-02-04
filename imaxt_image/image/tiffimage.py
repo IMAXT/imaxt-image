@@ -43,13 +43,13 @@ class TiffImage:
         """
         return self.tiff.series[0].pages.shape
 
-    def asarray(self) -> np.ndarray:
+    def asarray(self, out=None) -> np.ndarray:
         """Return TIFF image as numpy array.
 
         This functions returns the full content of the file as
         a multidimensional array.
         """
-        return self.tiff.asarray(out="memmap")
+        return self.tiff.asarray(out=out)
 
     @property
     def metadata(self) -> Metadata:
