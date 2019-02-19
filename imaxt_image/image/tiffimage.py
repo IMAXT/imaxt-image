@@ -5,7 +5,7 @@ from typing import Tuple, Union
 
 import numpy as np
 
-from imaxt_image.external.tifffile import TiffFile
+from imaxt_image.external.tifffile import TiffFile, TiffWriter
 from imaxt_image.image.metadata import Metadata
 from imaxt_image.image.omexmlmetadata import OMEXMLMetadata
 
@@ -68,3 +68,19 @@ class TiffImage:
         if "OME" not in description:
             return None
         return OMEXMLMetadata(self.tiff.pages[0].description)
+
+    @staticmethod
+    def write(img: np.ndarray, filename: Union[str, Path], compress: int = 0):
+        """Write image array to filename.
+
+        Parameters
+        ----------
+        img
+            image array
+        filename
+            name of the file
+        compress
+            compression level
+        """
+        with TiffWriter(f'{filename}') as writer:
+            writer.save(img, compress=compress)
