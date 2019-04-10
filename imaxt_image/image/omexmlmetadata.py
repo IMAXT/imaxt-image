@@ -26,13 +26,14 @@
 
 import sys
 import xml.dom.minidom as minidom
+
 TEXT_NODE = minidom.Node.TEXT_NODE
 
 
 def get_text(node):
     c = node.firstChild
     if c is None or c.nodeType != TEXT_NODE:
-        raise ValueError("node %r does not contain text" % (node,))
+        raise ValueError('node %r does not contain text' % (node,))
     return c.data
 
 
@@ -46,50 +47,51 @@ class NodeWrapper(object):
 
     def __setattr__(self, name, value):
         if name not in self.FIELDS:
-            raise AttributeError("attribute %s not allowed in %s" %
-                                 (name, self.__class__.__name__))
+            raise AttributeError(
+                'attribute %s not allowed in %s' % (name, self.__class__.__name__)
+            )
         super(NodeWrapper, self).__setattr__(name, value)
 
     @classmethod
     def fromnode(cls, node):
         if node.nodeName != cls.__name__:
-            raise ValueError("unexpected node: %s" % node.nodeName)
+            raise ValueError('unexpected node: %s' % node.nodeName)
         w = cls()
         for name, value in node.attributes.items():
             setattr(w, name, value)
-        super(NodeWrapper, w).__setattr__("_children", get_children(node))
+        super(NodeWrapper, w).__setattr__('_children', get_children(node))
         return w
 
 
 class Annotation(NodeWrapper):
 
-    FIELDS = ["Annotator", "ID", "Namespace", "Description", "AnnotationRef"]
+    FIELDS = ['Annotator', 'ID', 'Namespace', 'Description', 'AnnotationRef']
 
     @classmethod
     def fromnode(cls, node):
         ann = super(Annotation, cls).fromnode(node)
         ann.AnnotationRef = []
         for c in ann._children:
-            if c.nodeName == "Description":
+            if c.nodeName == 'Description':
                 ann.Description = get_text(c)
-            if c.nodeName == "AnnotationRef":
-                ann.AnnotationRef.append(c.attributes.get("ID").value)
+            if c.nodeName == 'AnnotationRef':
+                ann.AnnotationRef.append(c.attributes.get('ID').value)
         return ann
 
 
 class MapAnnotation(Annotation):
 
-    FIELDS = Annotation.FIELDS + ["Value"]
+    FIELDS = Annotation.FIELDS + ['Value']
 
     @classmethod
     def fromnode(cls, node):
         ann = super(MapAnnotation, cls).fromnode(node)
         ann.Value = {}
         for c in ann._children:
-            if c.nodeName == "Value":
+            if c.nodeName == 'Value':
                 for m in get_children(c):
                     try:
-                        k = m.attributes.get("K").value
+                        k = m.attributes.get('K').value
                     except AttributeError:
                         pass  # The "K" attribute is optional
                     else:
@@ -99,28 +101,31 @@ class MapAnnotation(Annotation):
 
 class XMLAnnotation(Annotation):
 
-    FIELDS = Annotation.FIELDS + ["Value"]
+    FIELDS = Annotation.FIELDS + ['Value']
 
     @classmethod
     def fromnode(cls, node):
         ann = super(XMLAnnotation, cls).fromnode(node)
         for c in ann._children:
-            if c.nodeName == "Value":
+            if c.nodeName == 'Value':
                 ann.Value = c
         return ann
 
 
 class OMEXMLMetadata(object):
-
     def __init__(self, xml_string):
         if sys.version_info < (3,):
-            xml_string = xml_string.encode("utf-8")
+            xml_string = xml_string.encode('utf-8')
         self.doc = minidom.parseString(xml_string)
 
     def get_map_annotations(self):
-        return [MapAnnotation.fromnode(_) for _ in
-                self.doc.getElementsByTagName("MapAnnotation")]
+        return [
+            MapAnnotation.fromnode(_)
+            for _ in self.doc.getElementsByTagName('MapAnnotation')
+        ]
 
     def get_xml_annotations(self):
-        return [XMLAnnotation.fromnode(_) for _ in
-                self.doc.getElementsByTagName("XMLAnnotation")]
+        return [
+            XMLAnnotation.fromnode(_)
+            for _ in self.doc.getElementsByTagName('XMLAnnotation')
+        ]
