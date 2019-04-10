@@ -3,7 +3,15 @@ from setuptools import find_packages, setup
 with open('README.rst') as readme_file:
     readme = readme_file.read()
 
-requirements = ['astropy', 'matplotlib', 'numpy', 'scipy', 'xmltodict']
+requirements = [
+    'astropy',
+    'matplotlib',
+    'numpy',
+    'scipy',
+    'xmltodict',
+    'holoviews',
+    'zarr',
+]
 
 setup_requirements = ['pytest-runner', 'flake8']
 
