@@ -11,6 +11,7 @@ requirements = [
     'xmltodict',
     'holoviews',
     'zarr',
+    'dask',
 ]
 
 setup_requirements = ['pytest-runner', 'flake8']

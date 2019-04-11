@@ -1,52 +1,38 @@
-from functools import partial
+from functools import lru_cache, partial
 from pathlib import Path
 
+import dask.array as da
 import holoviews as hv
-import numpy as np
+import param
 import zarr
 from holoviews.operation.datashader import regrid
 
 from imaxt_image.image.scaling import zscale
 
 
-def rebin(arr: np.ndarray, scale: int) -> np.ndarray:
-    """Rebin array.
+class zscale_filter(hv.Operation):
 
-    Parameters
-    ----------
-    arr
-        data array
-    scale
-        scale factor to downsize image
+    normalize = param.Boolean(default=False)
 
-    Returns
-    -------
-    rebinned array
-    """
-    shape = [*map(lambda x: x // scale, arr.shape)]
-    sh = (shape[0], arr.shape[0] // shape[0], shape[1], arr.shape[1] // shape[1])
-    return arr.reshape(sh).mean(-1).mean(1)
+    def _process(self, element, key=None):
+        xs = element.dimension_values(0, expanded=False)
+        ys = element.dimension_values(1, expanded=False)
 
+        # setting flat=False will preserve the matrix shape
+        data = element.dimension_values(2, flat=False)
 
-def prepare_image(img: np.ndarray, scale: int = 4) -> np.ndarray:
-    """Return scaled and rebinned image for display.
+        if self.p.normalize:
+            dr = data.ravel()
+            data = (data - dr.mean()) / dr.std() * 2 ** 16
 
-    Parameters
-    ----------
-    img
-        image array
-    scale
-        scale to downsize input image
+        vmin, vmax = zscale(data.ravel())
 
-    Returns
-    -------
-    rescale image array
-    """
-    if scale is not None:
-        img = rebin(img, scale)
-    vmin, vmax = zscale(img)
-    img = (img.clip(vmin, vmax) - img.mean()) / img.std()
-    return img
+        new_data = data.clip(vmin, vmax)
+
+        label = element.label
+        # make an exact copy of the element with all settings, just with different data and label:
+        element = element.clone((xs, ys, new_data), label=label)
+        return element
 
 
 def load_image(
@@ -76,17 +62,18 @@ def load_image(
     image to display
     """
     gcycle = data[f'fov={fov}/z={z}/cycle={cycle}']
-    names = [v[0] for v in gcycle.groups() if 'bit' in v[0]]
-    if 'bit=0' in channel:
-        channel = names[0]
-    elif 'bit=1' in channel:
-        channel = names[1]
-    img = prepare_image(data[f'fov={fov}/z={z}/cycle={cycle}/{channel}/raw'][:])
-    img = hv.Image(img, bounds=(0, 0, 2048, 2048), vdims='Intensity')
+    if 'bit' in channel:
+        names = [v[0] for v in gcycle.groups() if 'bit' in v[0]]
+        if '0' in channel:
+            channel = names[0]
+        else:
+            channel = names[1]
+    img = da.from_zarr(data[f'fov={fov}/z={z}/cycle={cycle}/{channel}/raw'])
+    img = hv.Image((range(2048), range(2048), img), vdims='Intensity')
     return img
 
 
-def browse(path: Path, colormap: str = 'Viridis') -> hv.Layout:
+def browse_raw(path: Path) -> hv.Layout:
     """Display a browsable MerFISH image cube in the Notebook.
 
     Parameters
@@ -107,15 +94,90 @@ def browse(path: Path, colormap: str = 'Viridis') -> hv.Layout:
         )
         for channel in ['nuclei', 'microbeads', 'bit=0', 'bit=1']
     ]
+    dmaps = [zscale_filter(dmap, normalize=True) for dmap in dmaps]
     plots = [
-        regrid(dmap)
-        .redim.range(
+        regrid(dmap).redim.range(
             fov=(0, data.attrs['fov'] - 1),
             cycle=(0, data.attrs['cycles'] - 1),
             z=(0, data.attrs['planes'] - 1),
         )
-        .opts(cmap=colormap)
         for dmap in dmaps
     ]
     layout = hv.Layout(plots).cols(2)
     return layout
+
+
+@lru_cache(maxsize=128)
+def get_bit_images(path, fov: int, plane: int, imgtype: str = 'raw'):
+    """Create stack of images from a field of view.
+
+    Given a field of view, extracts a stack of images containing
+    the bits images in the correct order.
+
+    Parameters
+    ----------
+    fov
+        Field of view.
+    plane
+        Slice
+    imgtype
+        Type of image to return (raw, raw_offset, bkg, seg)
+
+    Returns
+    -------
+    Stack of arrays containing all images from the field of view
+    """
+    data = zarr.open(f'{path}', 'r')
+    plane = data[f'fov={fov}/z={plane}']
+    j = 0
+    bits = []
+    for cycle in plane:
+        try:
+            bits.append(plane[f'{cycle}/bit={j}/{imgtype}'])
+            bits.append(plane[f'{cycle}/bit={j+1}/{imgtype}'])
+            j = j + 2
+        except KeyError:
+            pass
+    return bits
+
+
+def load_bit_image(
+    fov: int, z: int, bit: int, *, path: str, imgtype: str = 'raw'
+) -> hv.Image:
+    """Get an image from the cube
+
+    Parameters
+    ----------
+    fov
+        field of view
+    data
+        array
+    channel
+        channel
+    cycle
+        cycle
+    z
+        optical slice
+
+    Returns
+    -------
+    image to display
+    """
+    bits = get_bit_images(path, fov, z, imgtype=imgtype)
+    img = da.from_zarr(bits[bit])
+    img = hv.Image((range(2048), range(2048), img), vdims='Intensity')
+    return img
+
+
+def browse_bits(path: Path, imgtype: str = 'raw', zscale=False):
+    data = zarr.open(f'{path}', 'r')
+    dmap = hv.DynamicMap(partial(load_bit_image, path=path), kdims=['fov', 'z', 'bit'])
+
+    if zscale:
+        dmap = zscale_filter(dmap)
+
+    plots = regrid(dmap).redim.range(
+        fov=(0, data.attrs['fov'] - 1), z=(0, data.attrs['planes'] - 1), bit=(0, 15)
+    )
+
+    return regrid(plots)
