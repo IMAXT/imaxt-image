@@ -70,7 +70,8 @@ def load_image(
         else:
             channel = names[1]
     img = da.from_zarr(data[f'fov={fov}/z={z}/cycle={cycle}/{channel}/raw'])
-    img = hv.Image((range(2048), range(2048), img), vdims='Intensity')
+    ysize, xsize = img.shape
+    img = hv.Image((range(ysize), range(xsize), img), vdims='Intensity')
     return img
 
 
@@ -166,7 +167,8 @@ def load_bit_image(
     """
     bits = get_bit_images(path, fov, z, imgtype=imgtype)
     img = da.from_zarr(bits[bit])
-    img = hv.Image((range(2048), range(2048), img), vdims='Intensity')
+    xsize, ysize = img.shape
+    img = hv.Image((range(ysize), range(xsize), img), vdims='Intensity')
     return img
 
 
