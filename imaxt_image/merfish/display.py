@@ -1,6 +1,6 @@
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import dask.array as da
 import holoviews as hv
@@ -199,3 +199,40 @@ def display_bits(path: Path, imgtype: str = 'raw', zscale=False) -> hv.DynamicMa
     )
 
     return regrid(plots)
+
+
+def cutout(
+    path: Path,
+    coords: Tuple[int],
+    fov: int,
+    z: int,
+    imgtype: str = 'raw',
+    size: int = 20,
+) -> hv.Layout:
+    """Return cutouts around a position.
+
+    Parameters
+    ----------
+    path
+        location of data in Zarr format
+    coords
+        coordinates of centre
+    fov
+        field of view
+    z
+        slice
+    imgtype
+        type of image
+    size
+        cutout size in pixels
+
+    Returns
+    -------
+    layout
+    """
+    imgs = get_bit_images(path, fov, z)
+    a = slice(coords[1] - size, coords[1] + size)
+    b = slice(coords[0] - size, coords[0] + size)
+    plots = [hv.Image(im[a, b], label=im.name) for im in imgs]
+    layout = hv.Layout(plots)
+    return layout
