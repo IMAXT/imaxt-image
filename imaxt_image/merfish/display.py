@@ -208,6 +208,7 @@ def cutout(
     z: int,
     imgtype: str = 'raw',
     size: int = 20,
+    marker: int = 0,
 ) -> hv.Layout:
     """Return cutouts around a position.
 
@@ -225,6 +226,8 @@ def cutout(
         type of image
     size
         cutout size in pixels
+    marker
+        size of optional marker in the centre
 
     Returns
     -------
@@ -234,5 +237,8 @@ def cutout(
     a = slice(coords[1] - size, coords[1] + size)
     b = slice(coords[0] - size, coords[0] + size)
     plots = [hv.Image(im[a, b], label=im.name) for im in imgs]
+    if marker > 0:
+        m = hv.Points((0, 0)).opts(marker='o', size=marker, fill_alpha=0)
+        plots = [p * m for p in plots]
     layout = hv.Layout(plots)
     return layout
