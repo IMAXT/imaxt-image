@@ -71,7 +71,7 @@ def load_image(
             channel = names[1]
     img = da.from_zarr(data[f'fov={fov}/z={z}/cycle={cycle}/{channel}/raw'])
     ysize, xsize = img.shape
-    img = hv.Image((range(ysize), range(xsize), img), vdims='Intensity')
+    img = hv.Image((range(ysize), range(xsize), img), vdims='Intensity', label=channel)
     return img
 
 
@@ -94,7 +94,7 @@ def display_raw(path: Path) -> hv.Layout:
         )
         for channel in ['nuclei', 'microbeads', 'bit=0', 'bit=1']
     ]
-    dmaps = [zscale_filter(dmap, normalize=True) for dmap in dmaps]
+    dmaps = [zscale_filter(dmap, normalize=False) for dmap in dmaps]
     plots = [
         regrid(dmap).redim.range(
             fov=(0, data.attrs['fov'] - 1),
