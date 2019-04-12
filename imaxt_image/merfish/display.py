@@ -1,5 +1,6 @@
 from functools import lru_cache, partial
 from pathlib import Path
+from typing import List
 
 import dask.array as da
 import holoviews as hv
@@ -73,15 +74,13 @@ def load_image(
     return img
 
 
-def browse_raw(path: Path) -> hv.Layout:
+def display_raw(path: Path) -> hv.Layout:
     """Display a browsable MerFISH image cube in the Notebook.
 
     Parameters
     ----------
     path
         location of data in Zarr format
-    colormap
-         colormap to use
 
     Returns
     -------
@@ -108,7 +107,9 @@ def browse_raw(path: Path) -> hv.Layout:
 
 
 @lru_cache(maxsize=128)
-def get_bit_images(path, fov: int, plane: int, imgtype: str = 'raw'):
+def get_bit_images(
+    path, fov: int, plane: int, imgtype: str = 'raw'
+) -> List[zarr.Array]:
     """Create stack of images from a field of view.
 
     Given a field of view, extracts a stack of images containing
@@ -169,7 +170,22 @@ def load_bit_image(
     return img
 
 
-def browse_bits(path: Path, imgtype: str = 'raw', zscale=False):
+def display_bits(path: Path, imgtype: str = 'raw', zscale=False) -> hv.DynamicMap:
+    """Display a browsable MerFISH bit image cube in the Notebook.
+
+    Parameters
+    ----------
+    path
+        location of data in Zarr format
+    imgtype
+        type of bit image to display (raw, raw_offset, bkg, seg)
+    zscale
+         perform z-scaling
+
+    Returns
+    -------
+    image
+    """
     data = zarr.open(f'{path}', 'r')
     dmap = hv.DynamicMap(partial(load_bit_image, path=path), kdims=['fov', 'z', 'bit'])
 
