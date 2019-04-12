@@ -230,7 +230,7 @@ def cutout(
     -------
     layout
     """
-    imgs = get_bit_images(path, fov, z)
+    imgs = get_bit_images(path, fov, z, imgtype=imgtype)
     a = slice(coords[1] - size, coords[1] + size)
     b = slice(coords[0] - size, coords[0] + size)
     plots = [hv.Image(im[a, b], label=im.name) for im in imgs]
