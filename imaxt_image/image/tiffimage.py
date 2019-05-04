@@ -1,9 +1,11 @@
 """Read and write TIFF files."""
 
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Dict, List, Tuple, Union
 
+import dask.array as da
 import numpy as np
+from distributed.protocol import dask_deserialize, dask_serialize
 
 from imaxt_image.external.tifffile import TiffFile, TiffWriter
 from imaxt_image.image.metadata import Metadata
@@ -43,13 +45,28 @@ class TiffImage:
         """
         return self.tiff.series[0].pages.shape
 
-    def asarray(self, out=None) -> np.ndarray:
+    @property
+    def dtype(self):
+        """Return type of data.
+        """
+        return self.tiff.series[0].pages.dtype
+
+    def to_dask(self, chunks=None):
+        """Return a dask.array representation of the data.
+        """
+        chunks = chunks or self.shape
+        return da.from_array(self, chunks=chunks)
+
+    def asarray(self, out=None, maxworkers=1) -> np.ndarray:
         """Return TIFF image as numpy array.
 
         This functions returns the full content of the file as
         a multidimensional array.
         """
-        return self.tiff.asarray(out=out)
+        return self.tiff.asarray(out=out, maxworkers=maxworkers)
+
+    def __getitem__(self, item):
+        return self.asarray()[item]
 
     @property
     def metadata(self) -> Metadata:
@@ -84,3 +101,15 @@ class TiffImage:
         """
         with TiffWriter(f'{filename}') as writer:
             writer.save(img, compress=compress)
+
+
+@dask_serialize.register(TiffImage)
+def serialize(image: TiffImage) -> Tuple[Dict, List[bytes]]:
+    header = {}
+    frames = [f'{image.path}'.encode()]
+    return header, frames
+
+
+@dask_deserialize.register(TiffImage)
+def deserialize(header: Dict, frames: List[bytes]) -> TiffImage:
+    return TiffImage(frames[0].decode())
