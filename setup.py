@@ -22,6 +22,9 @@ setup(
     author='IMAXT Team',
     maintainer='Eduardo Gonzalez Solares',
     maintainer_email='eglez@ast.cam.ac.uk',
+    entry_points={
+        'console_scripts': ['preview=imaxt_image.cli.preview:main'],
+    },
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
