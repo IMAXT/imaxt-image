@@ -142,7 +142,6 @@ def find_shift(
         for p in permutations:
             im = np.ones_like(im0)
             pixels = shift(im, (p[1], p[0])).sum()
-            print(p, pixels)
             if pixels > xsize * ysize * overlap[0] and pixels < xsize * ysize * overlap[1]:
                 res = [p[0] + offset[1], p[1] + offset[0], pixels / xsize / ysize]
                 break
