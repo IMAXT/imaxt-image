@@ -2,9 +2,11 @@ import pytest
 import scipy.misc
 from scipy.ndimage import shift
 
-from imaxt_image.registration.cross_correlation import (enhanced_correlation,
-                                                        find_maximum,
-                                                        find_shift)
+from imaxt_image.registration.cross_correlation import (
+    enhanced_correlation,
+    find_maximum,
+    find_shift,
+)
 
 
 def test_enhanced_correlation():
@@ -37,7 +39,7 @@ def test_find_shift():
     assert res['y'] == -100
     assert res['overlap'] > 0.7
 
-    res = find_shift(im, im, offset=(100, 100), overlap=(0.6, 0.8))
+    res = find_shift(im, im, offset=True, overlap=(0.6, 1.0))
     assert res['x'] == 0
     assert res['y'] == 0
     assert res['overlap'] > 0.7

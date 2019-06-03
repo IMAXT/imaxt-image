@@ -1,3 +1,4 @@
+import warnings
 from typing import Dict, Tuple
 
 import numpy as np
@@ -62,7 +63,7 @@ def enhanced_correlation(
     return enhanced_correlation
 
 
-def find_maximum(im: np.ndarray, maxpeaks: int = 3) -> Tuple:
+def find_maximum(im: np.ndarray, maxpeaks: int = 3, border_width: int = 20) -> Tuple:
     """Find maximum peaks in image.
 
     Parameters
@@ -76,25 +77,42 @@ def find_maximum(im: np.ndarray, maxpeaks: int = 3) -> Tuple:
     -------
     x and y locations of peaks
     """
+    assert maxpeaks > 0
+    assert border_width > 0
     mean, std = im.mean(), im.std()
     xt = yt = [None]
     for sigma in [10, 5, 3]:
         threshold = mean + sigma * std
-        peaks_tbl = photutils.find_peaks(
-            im, threshold=threshold, box_size=30, border_width=20
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            peaks_tbl = photutils.find_peaks(
+                im, threshold=threshold, box_size=30, border_width=border_width
+            )
         if len(peaks_tbl) == 0:
             continue
         x, y, peak = peaks_tbl['x_peak'], peaks_tbl['y_peak'], peaks_tbl['peak_value']
         indx = np.argsort(peak)[-maxpeaks:]
         xt, yt = x[indx], y[indx]
         break
+    if None in x:
+        im0 = np.abs(im)
+        if border_width > 0:
+            im0[:border_width, :] = 0
+            im0[-border_width:, :] = 0
+            im0[:, :border_width] = 0
+            im0[:, -border_width:] = 0
+        y, x = np.unravel_index(np.argmax(im0), im.shape)
+        xt, yt = [x], [y]
     return xt, yt
 
 
 def find_shift(
-    im0: np.ndarray, im1: np.ndarray, sigma: int = 5, offset: Tuple[int] = (None, None),
-    overlap: Tuple[float] = (0.08, 0.12)
+    im0: np.ndarray,
+    im1: np.ndarray,
+    sigma: int = 5,
+    overlap: Tuple[float] = (0.08, 0.12),
+    full: bool = True,
+    offset: bool = False,
 ) -> Dict[str, int]:
     """Find shift between images using cross correlation.
 
@@ -106,8 +124,12 @@ def find_shift(
         Target image
     sigma
         Standard deviation of the convolution gaussian kernel.
+    overlap
+        Image overlap range to exclude possible offsets
+    full
+        Return full dictionary of results vs offsets list
     offset
-        Offset to apply to target image to deal with close to zero offsets.
+        Shift images around origin. Useful if expected shifts are close to zero.
 
     Returns
     -------
@@ -119,15 +141,16 @@ def find_shift(
     """
     assert overlap[0] < overlap[1]
     ysize, xsize = im0.shape
-    if None in offset:
-        offset = (0, 0)
-    else:
-        im1 = shift(im1[:], offset)
-
     xcorrelation = enhanced_correlation(im0, im1, sigma)
+    if offset:
+        xcorrelation = np.fft.fftshift(xcorrelation)
 
     im = xcorrelation.real
     xt, yt = find_maximum(im)
+
+    if offset:
+        xt = xt + xsize / 2
+        yt = yt + ysize / 2
 
     for i in range(len(xt)):
         xxt = xt[i]
@@ -142,9 +165,18 @@ def find_shift(
         for p in permutations:
             im = np.ones_like(im0)
             pixels = shift(im, (p[1], p[0])).sum()
-            if pixels > xsize * ysize * overlap[0] and pixels < xsize * ysize * overlap[1]:
-                res = [p[0] + offset[1], p[1] + offset[0], pixels / xsize / ysize]
+            if (
+                pixels >= xsize * ysize * overlap[0]
+                and pixels <= xsize * ysize * overlap[1]
+            ):
+                res = [p[0], p[1], pixels / xsize / ysize]
                 break
         if res[0] is not None:
             break
-    return {'x': res[0], 'y': res[1], 'overlap': res[2]}
+
+    if full:
+        return {'x': res[0], 'y': res[1], 'overlap': res[2]}
+    else:
+        if res[0] is None:
+            res = (0, 0)
+        return [res[1], res[0]]
