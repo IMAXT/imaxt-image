@@ -26,7 +26,7 @@ deploy:
     - pip install --user -r requirements_dev.txt
     - python setup.py sdist
     - curl -X MKCOL $REPO/imaxt-image
-    - curl -XPUT $REPO/imaxt-image/imaxt-image-0.9.1.tar.gz --data-binary @dist/imaxt-image-0.9.1.tar.gz
+    - curl -XPUT $REPO/imaxt-image/imaxt-image-0.10.0.tar.gz --data-binary @dist/imaxt-image-0.10.0.tar.gz
   environment:
     name: Repository
     url: http://imaxt.ast.cam.ac.uk/pip/imaxt-image/
