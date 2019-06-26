@@ -76,6 +76,7 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
     It obtains an initial estimate of the cross-correlation peak by an FFT and
     then refines the shift estimation by upsampling the DFT only in a small
     neighborhood of that estimate by means of a matrix-multiply DFT.
+
     Parameters
     ----------
     src_image : array
@@ -94,6 +95,7 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
     return_error : bool, optional
         Returns error and phase difference if on,
         otherwise only shifts are returned
+
     Returns
     -------
     shifts : ndarray
@@ -105,13 +107,14 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
     phasediff : float
         Global phase difference between the two images (should be
         zero if images are non-negative).
+
     References
     ----------
-    .. [1] Manuel Guizar-Sicairos, Samuel T. Thurman, and James R. Fienup,
-           "Efficient subpixel image registration algorithms,"
-           Optics Letters 33, 156-158 (2008). :DOI:`10.1364/OL.33.000156`
-    .. [2] James R. Fienup, "Invariant error metrics for image reconstruction"
-           Optics Letters 36, 8352-8357 (1997). :DOI:`10.1364/AO.36.008352`
+    .. Manuel Guizar-Sicairos, Samuel T. Thurman, and James R. Fienup,
+       "Efficient subpixel image registration algorithms,"
+       Optics Letters 33, 156-158 (2008).
+    .. James R. Fienup, "Invariant error metrics for image reconstruction"
+       Optics Letters 36, 8352-8357 (1997).
     """
     # images must be the same shape
     if src_image.shape != target_image.shape:
