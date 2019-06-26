@@ -12,6 +12,7 @@ requirements = [
     'holoviews',
     'zarr',
     'dask',
+    'scikit-image',
 ]
 
 setup_requirements = ['pytest-runner', 'flake8']

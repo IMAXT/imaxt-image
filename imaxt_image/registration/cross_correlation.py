@@ -1,118 +1,19 @@
-import warnings
 from typing import Dict, Tuple
 
 import numpy as np
-import photutils
 from scipy.ndimage import fourier_gaussian, shift
-
-
-def enhanced_correlation(
-    im0: np.ndarray, im1: np.ndarray, sigma: int = 5
-) -> np.ndarray:
-    r"""Calculate the cross correlation between two images.
-
-    Given the two images $S_0$ and $S_1$ and their Fourier
-    transforms $F_0$ and $F_1$ we define the enhanced cross
-    correlation as
-
-    .. math::
-
-        P = \frac{\Psi_{10}}{\sqrt{\Psi_{00} * \Psi_{11}}}
-
-    where $Psi_{ij} = F_i \times F_j^*$.
-
-    The images and the cross correlation are convolved with
-    a gaussian of standard deviation ``sigma``.
-
-    Parameters
-    ----------
-    im0
-        Reference image
-    im1
-        Image to register. Must be same dimensionality as ``im0``.
-    sigma
-        Sigma of the gaussian to convolve the images with.
-
-    Returns
-    -------
-    cross correlation array
-    """
-    assert im0.shape == im1.shape
-
-    src_image = np.array(im0, dtype=np.complex128, copy=False)
-    target_image = np.array(im1, dtype=np.complex128, copy=False)
-
-    # Fourier transform
-    F_0 = np.fft.fftn(src_image)
-    F_1 = np.fft.fftn(target_image)
-
-    # Convolution with gaussian
-    F_0 = fourier_gaussian(F_0, sigma)
-    F_1 = fourier_gaussian(F_1, sigma)
-
-    # Cross and auto-correlation
-    # phi_10 = F_1 * F_0.conj()
-    phi_01 = F_0 * F_1.conj()
-    phi_00 = F_0 * F_0.conj()
-    phi_11 = F_1 * F_1.conj()
-
-    # Enhanced correlation
-    P = phi_01 / (np.sqrt(phi_00 * phi_11) + 1e-10)
-    P = fourier_gaussian(P, 5)
-    enhanced_correlation = np.fft.ifftn(P)
-    return enhanced_correlation
-
-
-def find_maximum(im: np.ndarray, maxpeaks: int = 3, border_width: int = 20) -> Tuple:
-    """Find maximum peaks in image.
-
-    Parameters
-    ----------
-    im
-        Image
-    maxpeaks
-        Number of peaks to return (brightest)
-
-    Returns
-    -------
-    x and y locations of peaks
-    """
-    assert maxpeaks > 0
-    assert border_width > 0
-    mean, std = im.mean(), im.std()
-    xt = yt = [None]
-    for sigma in [10, 5, 3]:
-        threshold = mean + sigma * std
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            peaks_tbl = photutils.find_peaks(
-                im, threshold=threshold, box_size=30, border_width=border_width
-            )
-        if len(peaks_tbl) == 0:
-            continue
-        x, y, peak = peaks_tbl['x_peak'], peaks_tbl['y_peak'], peaks_tbl['peak_value']
-        indx = np.argsort(peak)[-maxpeaks:]
-        xt, yt = x[indx], y[indx]
-        break
-    if None in x:
-        im0 = np.abs(im)
-        if border_width > 0:
-            im0[:border_width, :] = 0
-            im0[-border_width:, :] = 0
-            im0[:, :border_width] = 0
-            im0[:, -border_width:] = 0
-        y, x = np.unravel_index(np.argmax(im0), im.shape)
-        xt, yt = [x], [y]
-    return xt, yt
+from skimage.feature.register_translation import (_compute_error,
+                                                  _compute_phasediff,
+                                                  _upsampled_dft)
 
 
 def find_shift(
     im0: np.ndarray,
     im1: np.ndarray,
-    sigma: int = 5,
     overlap: Tuple[float] = (0.08, 0.12),
-    full: bool = True,
-    offset: bool = False,
+    border_width: int= 0,
+    upsample_factor: int=1
+
 ) -> Dict[str, int]:
     """Find shift between images using cross correlation.
 
@@ -122,14 +23,12 @@ def find_shift(
         Reference image
     im1
         Target image
-    sigma
-        Standard deviation of the convolution gaussian kernel.
     overlap
         Image overlap range to exclude possible offsets
-    full
-        Return full dictionary of results vs offsets list
-    offset
-        Shift images around origin. Useful if expected shifts are close to zero.
+    border_width
+        Ignore maxima around this image border width
+    upsample_factor
+        Upsampling factor.
 
     Returns
     -------
@@ -141,42 +40,165 @@ def find_shift(
     """
     assert overlap[0] < overlap[1]
     ysize, xsize = im0.shape
-    xcorrelation = enhanced_correlation(im0, im1, sigma)
-    if offset:
-        xcorrelation = np.fft.fftshift(xcorrelation)
+    offset, error, phase = register_translation(im0, im1, border_width=border_width, upsample_factor=upsample_factor)
 
-    im = xcorrelation.real
-    xt, yt = find_maximum(im)
-
-    if offset:
-        xt = xt + xsize / 2
-        yt = yt + ysize / 2
-
-    for i in range(len(xt)):
-        xxt = xt[i]
-        yyt = yt[i]
-        permutations = (
-            (xxt, yyt),
-            (xxt - xsize, yyt),
-            (xxt, yyt - ysize),
-            (xxt - xsize, yyt - ysize),
-        )
-        res = [None, None, None]
-        for p in permutations:
-            im = np.ones_like(im0)
-            pixels = shift(im, (p[1], p[0])).sum()
-            if (
-                pixels >= xsize * ysize * overlap[0]
-                and pixels <= xsize * ysize * overlap[1]
-            ):
-                res = [p[0], p[1], pixels / xsize / ysize]
-                break
-        if res[0] is not None:
+    yyt = offset[0]
+    xxt = offset[1]
+    permutations = (
+        (yyt, xxt),
+        (yyt + ysize, xxt),
+        (yyt, xxt + xsize),
+        (yyt + ysize, xxt + xsize),
+        (yyt - ysize, xxt),
+        (yyt, xxt - xsize),
+        (yyt - ysize, xxt - xsize),
+    )
+    res = [None, None, None]
+    for p in permutations:
+        im = np.ones_like(im0)
+        pixels = shift(im, (p[0], p[1])).sum()
+        if (
+            pixels >= xsize * ysize * overlap[0]
+            and pixels <= xsize * ysize * overlap[1]
+        ):
+            res = [p[0], p[1], pixels / xsize / ysize]
             break
 
-    if full:
-        return {'x': res[0], 'y': res[1], 'overlap': res[2]}
+    return {'y': res[0], 'x': res[1], 'overlap': res[2], 'error': error}
+
+
+def register_translation(src_image, target_image, upsample_factor=1,    # noqa: C901
+                         space="real", return_error=True, border_width=0):
+    """
+    Efficient subpixel image translation registration by cross-correlation.
+    This code gives the same precision as the FFT upsampled cross-correlation
+    in a fraction of the computation time and with reduced memory requirements.
+    It obtains an initial estimate of the cross-correlation peak by an FFT and
+    then refines the shift estimation by upsampling the DFT only in a small
+    neighborhood of that estimate by means of a matrix-multiply DFT.
+    Parameters
+    ----------
+    src_image : array
+        Reference image.
+    target_image : array
+        Image to register.  Must be same dimensionality as ``src_image``.
+    upsample_factor : int, optional
+        Upsampling factor. Images will be registered to within
+        ``1 / upsample_factor`` of a pixel. For example
+        ``upsample_factor == 20`` means the images will be registered
+        within 1/20th of a pixel.  Default is 1 (no upsampling)
+    space : string, one of "real" or "fourier", optional
+        Defines how the algorithm interprets input data.  "real" means data
+        will be FFT'd to compute the correlation, while "fourier" data will
+        bypass FFT of input data.  Case insensitive.
+    return_error : bool, optional
+        Returns error and phase difference if on,
+        otherwise only shifts are returned
+    Returns
+    -------
+    shifts : ndarray
+        Shift vector (in pixels) required to register ``target_image`` with
+        ``src_image``.  Axis ordering is consistent with numpy (e.g. Z, Y, X)
+    error : float
+        Translation invariant normalized RMS error between ``src_image`` and
+        ``target_image``.
+    phasediff : float
+        Global phase difference between the two images (should be
+        zero if images are non-negative).
+    References
+    ----------
+    .. [1] Manuel Guizar-Sicairos, Samuel T. Thurman, and James R. Fienup,
+           "Efficient subpixel image registration algorithms,"
+           Optics Letters 33, 156-158 (2008). :DOI:`10.1364/OL.33.000156`
+    .. [2] James R. Fienup, "Invariant error metrics for image reconstruction"
+           Optics Letters 36, 8352-8357 (1997). :DOI:`10.1364/AO.36.008352`
+    """
+    # images must be the same shape
+    if src_image.shape != target_image.shape:
+        raise ValueError("Error: images must be same size for "
+                         "register_translation")
+
+    # assume complex data is already in Fourier space
+    if space.lower() == 'fourier':
+        src_freq = src_image
+        target_freq = target_image
+    # real data needs to be fft'd.
+    elif space.lower() == 'real':
+        src_freq = np.fft.fftn(src_image)
+        target_freq = np.fft.fftn(target_image)
     else:
-        if res[0] is None:
-            res = (0, 0)
-        return [res[1], res[0]]
+        raise ValueError("Error: register_translation only knows the \"real\" "
+                         "and \"fourier\" values for the ``space`` argument.")
+
+    # Whole-pixel shift - Compute cross-correlation by an IFFT
+    src_freq = fourier_gaussian(src_freq, 5)
+    target_freq = fourier_gaussian(target_freq, 5)
+    shape = src_freq.shape
+    image_product = src_freq * target_freq.conj()
+    norm = np.sqrt(src_freq * src_freq.conj() * target_freq * target_freq.conj()) + 1e-10
+    image_product = image_product / norm
+    image_product = fourier_gaussian(image_product, 5)
+    cross_correlation = np.fft.ifftn(image_product)
+    if border_width > 0:
+        cross_correlation[:border_width, :] = 0
+        cross_correlation[-border_width:, :] = 0
+        cross_correlation[:, :border_width] = 0
+        cross_correlation[:, -border_width:] = 0
+
+    # Locate maximum
+    maxima = np.unravel_index(np.argmax(np.abs(cross_correlation)),
+                              cross_correlation.shape)
+    midpoints = np.array([np.fix(axis_size / 2) for axis_size in shape])
+
+    shifts = np.array(maxima, dtype=np.float64)
+    shifts[shifts > midpoints] -= np.array(shape)[shifts > midpoints]
+
+    if upsample_factor == 1:
+        if return_error:
+            src_amp = np.sum(np.abs(src_freq) ** 2) / src_freq.size
+            target_amp = np.sum(np.abs(target_freq) ** 2) / target_freq.size
+            CCmax = cross_correlation[maxima]
+    # If upsampling > 1, then refine estimate with matrix multiply DFT
+    else:
+        # Initial shift estimate in upsampled grid
+        shifts = np.round(shifts * upsample_factor) / upsample_factor
+        upsampled_region_size = np.ceil(upsample_factor * 1.5)
+        # Center of output array at dftshift + 1
+        dftshift = np.fix(upsampled_region_size / 2.0)
+        upsample_factor = np.array(upsample_factor, dtype=np.float64)
+        normalization = (src_freq.size * upsample_factor ** 2)
+        # Matrix multiply DFT around the current shift estimate
+        sample_region_offset = dftshift - shifts * upsample_factor
+        cross_correlation = _upsampled_dft(image_product.conj(),
+                                           upsampled_region_size,
+                                           upsample_factor,
+                                           sample_region_offset).conj()
+        cross_correlation /= normalization
+        # Locate maximum and map back to original pixel grid
+        maxima = np.unravel_index(np.argmax(np.abs(cross_correlation)),
+                                  cross_correlation.shape)
+        CCmax = cross_correlation[maxima]
+
+        maxima = np.array(maxima, dtype=np.float64) - dftshift
+
+        shifts = shifts + maxima / upsample_factor
+
+        if return_error:
+            src_amp = _upsampled_dft(src_freq * src_freq.conj(),
+                                     1, upsample_factor)[0, 0]
+            src_amp /= normalization
+            target_amp = _upsampled_dft(target_freq * target_freq.conj(),
+                                        1, upsample_factor)[0, 0]
+            target_amp /= normalization
+
+    # If its only one row or column the shift along that dimension has no
+    # effect. We set to zero.
+    for dim in range(src_freq.ndim):
+        if shape[dim] == 1:
+            shifts[dim] = 0
+
+    if return_error:
+        return shifts, _compute_error(CCmax, src_amp, target_amp),\
+            _compute_phasediff(CCmax)
+    else:
+        return shifts
