@@ -1,6 +1,7 @@
 from typing import Dict, Tuple
 
 import numpy as np
+from astropy.stats import median_absolute_deviation as mad
 from scipy.ndimage import fourier_gaussian, shift
 from skimage.feature.register_translation import (_compute_error,
                                                   _compute_phasediff,
@@ -40,7 +41,9 @@ def find_shift(
     """
     assert overlap[0] < overlap[1]
     ysize, xsize = im0.shape
-    offset, error, phase = register_translation(im0, im1, border_width=border_width, upsample_factor=upsample_factor)
+    offset, error, phase, peak = register_translation(im0, im1,
+                                                      border_width=border_width,
+                                                      upsample_factor=upsample_factor)
 
     yyt = offset[0]
     xxt = offset[1]
@@ -64,7 +67,7 @@ def find_shift(
             res = [p[0], p[1], pixels / xsize / ysize]
             break
 
-    return {'y': res[0], 'x': res[1], 'overlap': res[2], 'error': error}
+    return {'y': res[0], 'x': res[1], 'overlap': res[2], 'error': error, 'peak': peak}
 
 
 def register_translation(src_image, target_image, upsample_factor=1,    # noqa: C901
@@ -107,6 +110,8 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
     phasediff : float
         Global phase difference between the two images (should be
         zero if images are non-negative).
+    peak : float
+        Relative peak intensity in units of sigma above background.
 
     References
     ----------
@@ -156,6 +161,10 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
     shifts = np.array(maxima, dtype=np.float64)
     shifts[shifts > midpoints] -= np.array(shape)[shifts > midpoints]
 
+    # Peak flux
+    corr = np.abs(cross_correlation)
+    peak = (corr[maxima] - np.median(corr))/ (1.4826 * mad(corr) )
+
     if upsample_factor == 1:
         if return_error:
             src_amp = np.sum(np.abs(src_freq) ** 2) / src_freq.size
@@ -202,6 +211,6 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
 
     if return_error:
         return shifts, _compute_error(CCmax, src_amp, target_amp),\
-            _compute_phasediff(CCmax)
+            _compute_phasediff(CCmax), peak
     else:
         return shifts
