@@ -102,6 +102,15 @@ class TiffImage:
         with TiffWriter(f'{filename}') as writer:
             writer.save(img, compress=compress)
 
+    def close(self):
+        self.tiff.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
 
 @dask_serialize.register(TiffImage)
 def serialize(image: TiffImage) -> Tuple[Dict, List[bytes]]:
