@@ -10,6 +10,7 @@ requirements = [
     'scipy',
     'xmltodict',
     'holoviews',
+    'imagecodecs-lite==2019.04.20.imaxt',
     'zarr',
     'dask',
     'scikit-image',
@@ -47,4 +48,5 @@ setup(
     version='0.10.2',
     zip_safe=False,
     python_requires='>=3.5',
+    dependency_links=['https://imaxt.ast.cam.ac.uk/pip/imagecodecs-lite/'],
 )

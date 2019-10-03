@@ -9,6 +9,7 @@ test:
   script:
     - pip install --user -r requirements_dev.txt
     - export MPLBACKEND="Agg"
+    - pip install imagecodecs-lite
     - python setup.py develop --user
     - python setup.py flake8
     - python setup.py build_sphinx -W
@@ -24,6 +25,7 @@ deploy:
     - branches
   script:
     - pip install --user -r requirements_dev.txt
+    - pip install imagecodecs-lite
     - python setup.py sdist
     - curl -X MKCOL $REPO/imaxt-image
     - curl -XPUT $REPO/imaxt-image/imaxt-image-0.10.2.tar.gz --data-binary @dist/imaxt-image-0.10.2.tar.gz
