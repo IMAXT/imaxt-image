@@ -2,10 +2,16 @@
 
 import math
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from imaxt_image.image.scaling import zscale
+
+try:
+    import matplotlib.pyplot as plt
+
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
 
 
 def imshow(img: np.ndarray):

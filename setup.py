@@ -5,15 +5,15 @@ with open('README.rst') as readme_file:
 
 requirements = [
     'astropy',
-    'matplotlib',
     'numpy',
     'scipy',
     'xmltodict',
-    'holoviews',
     'zarr',
     'dask',
     'scikit-image',
 ]
+
+extras_require = {'notebook': ['holoviews', 'matplotlib']}
 
 setup_requirements = ['pytest-runner', 'flake8']
 
@@ -34,6 +34,7 @@ setup(
     ],
     description='IMAXT Image Utilities',
     install_requires=requirements,
+    extras_require=extras_require,
     license='GNU General Public License v3',
     long_description=readme,
     include_package_data=True,
