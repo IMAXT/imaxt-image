@@ -40,6 +40,10 @@ class TiffImage:
             raise FileNotFoundError(f'File not found: {self.path}')
 
     @property
+    def ndim(self) -> int:
+        return len(self.shape)
+
+    @property
     def shape(self) -> Tuple[int, ...]:
         """Return size of image.
         """
