@@ -13,6 +13,7 @@ requirements = [
     'imagecodecs-lite==2019.04.20.imaxt',
     'zarr',
     'dask',
+    'xarray',
     'scikit-image',
 ]
 

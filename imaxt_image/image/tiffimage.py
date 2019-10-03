@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple, Union
 
 import dask.array as da
 import numpy as np
+import xarray as xr
 from distributed.protocol import dask_deserialize, dask_serialize
 
 from imaxt_image.external.tifffile import TiffFile, TiffWriter
@@ -60,6 +61,27 @@ class TiffImage:
         """
         chunks = chunks or self.shape
         return da.from_array(self, chunks=chunks)
+
+    def to_xarray(self, dims=None, use_dask=True) -> xr.DataArray:
+        """Return a DataArray representation of the data.
+
+        Parameters
+        ----------
+        dims
+            Dimension names associated with this array.
+        use_dask
+            Use Dask to lazyload the array.
+
+        Returns
+        -------
+        Xarray DataArray
+        """
+        coords = tuple([range(d) for d in self.shape])
+        if use_dask:
+            arr = self.to_dask()
+        else:
+            arr = self.asarray()
+        return xr.DataArray(arr, dims=dims, coords=coords)
 
     def asarray(self, out=None, maxworkers=1) -> np.ndarray:
         """Return TIFF image as numpy array.
