@@ -1,4 +1,4 @@
-.. _imc_contributing:
+.. _image_contributing:
 
 Contributing to development
 ===========================
