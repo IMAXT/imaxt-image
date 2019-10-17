@@ -3,18 +3,16 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to IMAXT Pipeline's documentation!
-==========================================
+IMAXT IMAGE Utils
+=================
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   source/modules
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   install
+   ometiff
+   imaxt_image
+   contributing
+   authors
+   history

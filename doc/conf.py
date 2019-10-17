@@ -15,8 +15,6 @@
 import os
 import sys
 
-import sphinx.ext.apidoc
-
 sys.path.insert(0, os.path.abspath('../..'))
 
 
@@ -53,6 +51,8 @@ extensions = [
     'sphinx_autodoc_typehints',
 ]
 
+napoleon_use_rtype = False
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -80,13 +80,13 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
 
-
+add_module_names = False
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'pyramid'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -191,7 +191,14 @@ epub_exclude_files = ['search.html']
 
 
 # -- Extension configuration -------------------------------------------------
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://docs.scipy.org/doc/numpy', None),
+    'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
+    'dask': ('http://docs.dask.org/en/latest', None),
+    'distributed': ('https://distributed.readthedocs.io/en/latest/', None),
+    'imaxt': ('https://imaxt.ast.cam.ac.uk/docs', None),
+}
 
-
-def setup(app):
-    sphinx.ext.apidoc.main(['-f', '-o', 'doc/source', 'imaxt_image'])
+# def setup(app):
+#    sphinx.ext.apidoc.main(['-f', '-o', 'doc/source', 'imaxt_image'])
