@@ -1,10 +1,50 @@
-from typing import Dict, Tuple
+from typing import Tuple
 
 import numpy as np
 from scipy.ndimage import fourier_gaussian, shift
 from skimage.feature.register_translation import (_compute_error,
                                                   _compute_phasediff,
                                                   _upsampled_dft)
+
+from .mutual_information import iqr
+
+
+class ShiftResult(dict):
+    """ Represents the shift result.
+
+    Attributes
+    ----------
+    x : float
+        x offset
+    y : float
+        y offset
+    overlap: float
+        percentage of overlap
+    error : float
+        error
+    iqr : float
+        information quality ratio
+    """
+
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
+
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+    def __repr__(self):
+        if self.keys():
+            m = max(map(len, list(self.keys()))) + 1
+            return '\n'.join([k.rjust(m) + ': ' + repr(v)
+                              for k, v in sorted(self.items())])
+        else:
+            return self.__class__.__name__ + "()"
+
+    def __dir__(self):
+        return list(self.keys())
 
 
 def find_shift(
@@ -14,7 +54,7 @@ def find_shift(
     border_width: int= 0,
     upsample_factor: int=1
 
-) -> Dict[str, int]:
+) -> ShiftResult:
     """Find shift between images using cross correlation.
 
     Parameters
@@ -32,7 +72,7 @@ def find_shift(
 
     Returns
     -------
-    Dictionary containing x, y and overlap area in pixels.
+    The result represented as a ``ShiftResult`` object.
 
     References
     ----------
@@ -54,17 +94,26 @@ def find_shift(
         (yyt - ysize, xxt - xsize),
     )
     res = [None, None, None]
+    mi = 0
     for p in permutations:
         im = np.ones_like(im0)
         pixels = shift(im, (p[0], p[1])).sum()
-        if (
-            pixels >= xsize * ysize * overlap[0]
-            and pixels <= xsize * ysize * overlap[1]
-        ):
-            res = [p[0], p[1], pixels / xsize / ysize]
-            break
+        if pixels > 0:
+            nmi = iqr(im0, im1, offset=(p[1], p[0]))
+            if nmi > mi:
+                if overlap is not None:
+                    if (
+                       pixels >= xsize * ysize * overlap[0]
+                       and pixels <= xsize * ysize * overlap[1]
+                       ):
+                        res = [p[0], p[1], pixels / xsize / ysize, mi]
+                        mi = nmi
+                else:
+                    res = [p[0], p[1], pixels / xsize / ysize, mi]
+                    mi = nmi
 
-    return {'y': res[0], 'x': res[1], 'overlap': res[2], 'error': error}
+    res = {'y': res[0], 'x': res[1], 'overlap': res[2], 'error': error, 'iqr': mi}
+    return ShiftResult(res)
 
 
 def register_translation(src_image, target_image, upsample_factor=1,    # noqa: C901
@@ -110,11 +159,12 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
 
     References
     ----------
-    .. Manuel Guizar-Sicairos, Samuel T. Thurman, and James R. Fienup,
-       "Efficient subpixel image registration algorithms,"
-       Optics Letters 33, 156-158 (2008).
-    .. James R. Fienup, "Invariant error metrics for image reconstruction"
-       Optics Letters 36, 8352-8357 (1997).
+    Manuel Guizar-Sicairos, Samuel T. Thurman, and James R. Fienup,
+    "Efficient subpixel image registration algorithms,"
+    Optics Letters 33, 156-158 (2008).
+
+    James R. Fienup, "Invariant error metrics for image reconstruction"
+    Optics Letters 36, 8352-8357 (1997).
     """
     # images must be the same shape
     if src_image.shape != target_image.shape:
