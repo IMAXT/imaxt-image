@@ -8,7 +8,7 @@ import param
 import zarr
 from holoviews.operation.datashader import regrid
 
-from imaxt_image.image.scaling import zscale
+from imaxt_image.display.scaling import zscale
 
 
 class zscale_filter(hv.Operation):

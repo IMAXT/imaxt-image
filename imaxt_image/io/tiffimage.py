@@ -9,8 +9,8 @@ import xarray as xr
 from distributed.protocol import dask_deserialize, dask_serialize
 
 from imaxt_image.external.tifffile import TiffFile, TiffWriter
-from imaxt_image.image.metadata import Metadata
-from imaxt_image.image.omexmlmetadata import OMEXMLMetadata
+from imaxt_image.io.metadata import Metadata
+from imaxt_image.io.omexmlmetadata import OMEXMLMetadata
 
 
 class TiffImage:

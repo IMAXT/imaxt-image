@@ -1,5 +1,3 @@
-"""Utility functions to scale images."""
-
 from typing import Tuple
 
 import numpy as np
@@ -12,14 +10,13 @@ def zscale(img: np.ndarray) -> Tuple[float, float]:
     Parameters
     ----------
     img
-        Image array
+        image array
 
     Returns
     -------
-    float, float
-        Tuple containing the zscale range
+    zscale range
     """
-    vmin, vmax = ZScaleInterval(krej=10).get_limits(img)
+    vmin, vmax = ZScaleInterval(krej=10).get_limits(img.ravel())
     return vmin, vmax
 
 
@@ -32,15 +29,14 @@ def percentile(img: np.ndarray, percentile: int) -> Tuple[float, float]:
     Parameters
     ----------
     img
-        Image array
+        image array
     percentile
         Percentile value
 
     Returns
     -------
-    float, float
-        Tuple containing the percentile range
+    percentile range
     """
     p = PercentileInterval(percentile)
-    vmin, vmax = p.get_limits(img)
+    vmin, vmax = p.get_limits(img.ravel())
     return vmin, vmax
