@@ -6,11 +6,18 @@ from typing import Dict, List, Tuple, Union
 import dask.array as da
 import numpy as np
 import xarray as xr
+from dask import delayed
 from distributed.protocol import dask_deserialize, dask_serialize
 
 from imaxt_image.external.tifffile import TiffFile, TiffWriter
 from imaxt_image.io.metadata import Metadata
 from imaxt_image.io.omexmlmetadata import OMEXMLMetadata
+
+
+@delayed
+def _imread(filename):
+    with TiffImage(filename) as img:
+        return img.asarray()
 
 
 class TiffImage:
@@ -59,8 +66,7 @@ class TiffImage:
     def to_dask(self, chunks=None):
         """Return a dask.array representation of the data.
         """
-        chunks = chunks or self.shape
-        return da.from_array(self, chunks=chunks)
+        return da.from_delayed(_imread(self.path), shape=self.shape, dtype=self.dtype)
 
     def to_xarray(self, dims=None, use_dask=True) -> xr.DataArray:
         """Return a DataArray representation of the data.
