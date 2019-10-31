@@ -79,6 +79,8 @@ def find_shift(
     See: http://www.sci.utah.edu/publications/SCITechReports/UUSCI-2006-020.pdf
     """
     assert overlap[0] < overlap[1]
+    im0 = im0[:]
+    im1 = im1[:]
     ysize, xsize = im0.shape
     offset, error, phase = register_translation(im0, im1, border_width=border_width, upsample_factor=upsample_factor)
 
