@@ -2,7 +2,7 @@ History
 =======
 
 
-0.12.0 (2019-10-29)
+0.12.2 (2019-11-03)
 -------------------
 
 * Add mutual information to cross correlation.

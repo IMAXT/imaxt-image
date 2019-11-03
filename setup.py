@@ -12,7 +12,7 @@ requirements = [
     'holoviews',
     'datashader',
     'imagecodecs-lite==2019.04.20.imaxt',
-    'zarr==2.3.2.imaxt',
+    'zarr==2.3.2.1',
     'dask',
     'xarray',
     'scikit-image',
@@ -47,7 +47,7 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://gitlab.ast.cam.ac.uk/imaxt/imaxt-image',
-    version='0.12.1',
+    version='0.12.2',
     zip_safe=False,
     python_requires='>=3.5',
     dependency_links=[
