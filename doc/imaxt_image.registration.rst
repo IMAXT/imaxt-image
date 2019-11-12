@@ -17,3 +17,16 @@ Cross Correlation (:mod:`imaxt_image.registration.cross_correlation`)
 
 .. automodule:: imaxt_image.registration.cross_correlation
    :members:
+
+Minimization (:mod:`imaxt_image.registration.minimization`)
+-----------------------------------------------------------
+
+.. automodule:: imaxt_image.registration.minimization
+   :members:
+
+Utils (:mod:`imaxt_image.registration.utils`)
+---------------------------------------------
+
+.. automodule:: imaxt_image.registration.utils
+   :members:
+

@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 import numpy as np
 from scipy.ndimage import shift
 
@@ -38,7 +40,7 @@ class ShiftResult(dict):
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: nocover
         if self.keys():
             m = max(map(len, list(self.keys()))) + 1
             return '\n'.join(
@@ -51,26 +53,31 @@ class ShiftResult(dict):
         return list(self.keys())
 
 
-def extract_overlap(im1, im2, offset, conf1=None, conf2=None):
-    """[summary]
+def extract_overlap(
+    im1: np.ndarray,
+    im2: np.ndarray,
+    offset: Tuple[float],
+    conf1: np.ndarray = None,
+    conf2: np.ndarray = None,
+) -> Tuple[np.ndarray]:
+    """Extract overlapping area from two images based on an offset
 
     Parameters
     ----------
-    im1 : [type]
-        [description]
-    im2 : [type]
-        [description]
-    offset : [type]
-        [description]
-    conf1 : [type], optional
-        [description], by default None
-    conf2 : [type], optional
-        [description], by default None
+    im1
+        Reference image
+    im2
+        Target image
+    offset
+        Offset in pixels between reference and target image
+    conf1
+        Confidence map for reference image
+    conf2
+        Confidence map for seconf image
 
     Returns
     -------
-    [type]
-        [description]
+    image subsets
     """
     if offset == (0, 0):
         if (conf1 is not None) and (conf2 is not None):
