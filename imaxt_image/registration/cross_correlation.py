@@ -7,53 +7,16 @@ from skimage.feature.register_translation import (_compute_error,
                                                   _upsampled_dft)
 
 from .mutual_information import iqr
-
-
-class ShiftResult(dict):
-    """ Represents the shift result.
-
-    Attributes
-    ----------
-    x : float
-        x offset
-    y : float
-        y offset
-    overlap: float
-        percentage of overlap
-    error : float
-        error
-    iqr : float
-        information quality ratio
-    """
-
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError:
-            raise AttributeError(name)
-
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
-
-    def __repr__(self):
-        if self.keys():
-            m = max(map(len, list(self.keys()))) + 1
-            return '\n'.join([k.rjust(m) + ': ' + repr(v)
-                              for k, v in sorted(self.items())])
-        else:
-            return self.__class__.__name__ + "()"
-
-    def __dir__(self):
-        return list(self.keys())
+from .utils import ShiftResult, extract_overlap
 
 
 def find_shift(
     im0: np.ndarray,
     im1: np.ndarray,
-    overlap: Tuple[float] = (0.08, 0.12),
+    overlap: Tuple[float] = None,
     border_width: int= 0,
-    upsample_factor: int=1
-
+    upsample_factor: int=1,
+    initial_shift: Tuple[int] = None,
 ) -> ShiftResult:
     """Find shift between images using cross correlation.
 
@@ -68,7 +31,9 @@ def find_shift(
     border_width
         Ignore maxima around this image border width
     upsample_factor
-        Upsampling factor.
+        Upsampling factor
+    initial_shift
+        Initial guess
 
     Returns
     -------
@@ -78,11 +43,20 @@ def find_shift(
     ----------
     See: http://www.sci.utah.edu/publications/SCITechReports/UUSCI-2006-020.pdf
     """
-    assert overlap[0] < overlap[1]
-    im0 = im0[:]
-    im1 = im1[:]
+
+    if initial_shift is not None:
+        im0_cut, im1_cut = extract_overlap(im0, im1, initial_shift)
+    else:
+        initial_shift = (0, 0)
+        im0_cut, im1_cut = im0, im1
+
     ysize, xsize = im0.shape
-    offset, error, phase = register_translation(im0, im1, border_width=border_width, upsample_factor=upsample_factor)
+    offset, error, phase = register_translation(
+        im0_cut,
+        im1_cut,
+        border_width=border_width,
+        upsample_factor=upsample_factor,
+    )
 
     yyt = offset[0]
     xxt = offset[1]
@@ -99,27 +73,29 @@ def find_shift(
     mi = 0
     for p in permutations:
         im = np.ones_like(im0)
-        pixels = shift(im, (p[0], p[1])).sum()
+        offset = [p[0] + initial_shift[0], p[1] + initial_shift[1]]
+        pixels = shift(im, offset, mode='constant', cval=0, order=1).sum()
         if pixels > 0:
-            nmi = iqr(im0, im1, offset=(p[1], p[0]))
+            nmi = iqr(im0_cut, im1_cut, offset=p)
             if nmi > mi:
                 if overlap is not None:
                     if (
                        pixels >= xsize * ysize * overlap[0]
                        and pixels <= xsize * ysize * overlap[1]
                        ):
-                        res = [p[0], p[1], pixels / xsize / ysize, mi]
+                        res = [offset[0], offset[1], pixels / xsize / ysize, mi]
                         mi = nmi
                 else:
-                    res = [p[0], p[1], pixels / xsize / ysize, mi]
+                    res = [offset[0], offset[1], pixels / xsize / ysize, mi]
                     mi = nmi
 
-    res = {'y': res[0], 'x': res[1], 'overlap': res[2], 'error': error, 'iqr': mi}
+    res = {'y': res[0], 'x': res[1],
+           'overlap': res[2], 'error': error, 'iqr': mi}
     return ShiftResult(res)
 
 
 def register_translation(src_image, target_image, upsample_factor=1,    # noqa: C901
-                         space="real", return_error=True, border_width=0):
+                         space="real", return_error=True, border_width=0):  # pragma: nocover
     """
     Efficient subpixel image translation registration by cross-correlation.
     This code gives the same precision as the FFT upsampled cross-correlation
