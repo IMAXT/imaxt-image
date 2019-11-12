@@ -38,6 +38,8 @@ class TiffImage:
     >>> arr1 = arr[0, 0]
     """
 
+    __slots__ = ['path', 'tiff']
+
     def __init__(self, path: Union[str, Path]) -> None:
         if not isinstance(path, Path):
             path = Path(path)
