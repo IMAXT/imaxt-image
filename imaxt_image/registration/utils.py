@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Tuple
 
 import numpy as np
 from scipy.ndimage import shift
@@ -73,7 +73,7 @@ def extract_overlap(
     conf1
         Confidence map for reference image
     conf2
-        Confidence map for seconf image
+        Confidence map for second image
 
     Returns
     -------

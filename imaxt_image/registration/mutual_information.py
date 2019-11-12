@@ -32,7 +32,7 @@ def mutual_information(
     mutual information (MI) metric
     """
     x = offset if offset is not None else (0, 0)
-    im2c = shift(im2, (x[1], x[0]), order=1, prefilter=False, mode='constant')
+    im2c = shift(im2, x, order=1, prefilter=False, mode='constant')
     mask = im2c > 0
     hgram, *_ = np.histogram2d(im1[mask], im2c[mask], bins=20)
     # Convert bins counts to probability values
@@ -80,7 +80,7 @@ def iqr(im1: np.ndarray, im2: np.ndarray, offset: np.ndarray = None) -> float:
 
     """
     x = offset if offset is not None else (0, 0)
-    im2c = shift(im2, (x[1], x[0]), order=1, prefilter=False, mode='constant')
+    im2c = shift(im2, x, order=1, prefilter=False, mode='constant')
     mask = im2c > 0
     hgram, *_ = np.histogram2d(im1[mask], im2c[mask], bins=20)
     # Convert bins counts to probability values
