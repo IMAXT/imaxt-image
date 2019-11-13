@@ -25,29 +25,6 @@ def test_percentile():
     assert vmax == 0.0
 
 
-# def test_imshow(mocker):
-#     mocker.patch.object(plt, 'imshow', autospec=True)
-#     mocker.patch.object(plt, 'axis', autospec=True)
-#     im = imread(None)
-#     imshow(im)
-#     plt.imshow.assert_called_once()
-
-
-# def test_multishow(mocker):
-#     mocker.patch.object(plt, 'imshow', autospec=True)
-#     mocker.patch.object(plt, 'subplot', autospec=True)
-#     mocker.patch.object(plt, 'axis', autospec=True)
-#     mocker.patch.object(plt, 'tight_layout', autospec=True)
-#     im = imread(None)
-#     multishow(im, orientation='landscape')
-#     assert plt.imshow.call_count == im.shape[0]
-#     assert plt.subplot.call_count == im.shape[0]
-
-#     multishow(im, orientation='portrait')
-#     assert plt.imshow.call_count == im.shape[0] * 2
-#     assert plt.subplot.call_count == im.shape[0] * 2
-
-
 def test_image():
     im = TiffImage('tests/16bit.s.tif')
     assert im.shape == (10, 10)
@@ -69,3 +46,21 @@ def test_image_pathlib():
 def test_metadata():
     im = TiffImage(Path('tests/16bit.s.tif'))
     assert im.metadata is None
+
+
+def test_ome_tiff():
+    im = TiffImage(Path('tests/tubhiswt_C1.ome.tif'))
+    assert 'OME' in im.metadata.as_dict()
+    assert 'OME' in im.metadata.description
+
+
+def test_dask():
+    im = TiffImage(Path('tests/16bit.s.tif'))
+    assert im.ndim == 2
+    assert im.dtype == np.dtype('int16')
+
+    da = im.to_dask()
+    assert da.shape == (10, 10)
+
+    xarr = im.to_xarray()
+    assert len(xarr) == 10
