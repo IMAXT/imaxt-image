@@ -2,6 +2,12 @@ History
 =======
 
 
+0.13.0 (2019-11-19)
+-------------------
+
+* Reverse mutual information offset indexes.
+* Add function to find offsets using minimization. 
+
 0.12.3 (2019-11-03)
 -------------------
 
