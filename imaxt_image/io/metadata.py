@@ -26,10 +26,3 @@ class Metadata:
     @property
     def description(self) -> str:
         return self._description
-
-
-"""
-et.find("*//ome:XMLAnnotation[@Namespace='imaxt.cruk.cam.ac.uk/sample/
-     ...: imc/original-metadata']", {'ome': 'http://www.openmicroscopy.org/Schem
-     ...: as/OME/2016-06'})
-"""
