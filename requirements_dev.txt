@@ -1,5 +1,5 @@
 better-exceptions
-black==19.3b1.imaxt
+black
 bumpversion
 sphinx
 sphinx-autodoc-typehints
