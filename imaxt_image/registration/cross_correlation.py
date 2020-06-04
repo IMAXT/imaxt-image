@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import numpy as np
+import xarray as xr
 from scipy.ndimage import fourier_gaussian, shift
 
 from .mutual_information import iqr
@@ -54,11 +55,21 @@ def find_shift(
     See: http://www.sci.utah.edu/publications/SCITechReports/UUSCI-2006-020.pdf
     """
 
+    if isinstance(im0, xr.DataArray):
+        this_im0 = im0.values
+    else:
+        this_im0 = im0
+
+    if isinstance(im1, xr.DataArray):
+        this_im1 = im1.values
+    else:
+        this_im1 = im1
+
     if initial_shift is not None:
-        im0_cut, im1_cut = extract_overlap(im0, im1, initial_shift)
+        im0_cut, im1_cut = extract_overlap(this_im0, this_im1, initial_shift)
     else:
         initial_shift = (0, 0)
-        im0_cut, im1_cut = im0, im1
+        im0_cut, im1_cut = this_im0, this_im1
 
     ysize, xsize = im0.shape
     offset, error, phase = register_translation(
