@@ -70,13 +70,11 @@ class TiffImage:
         """
         return da.from_delayed(_imread(self.path), shape=self.shape, dtype=self.dtype)
 
-    def to_xarray(self, dims=None, use_dask=True) -> xr.DataArray:
+    def to_xarray(self, use_dask=True, **kwargs) -> xr.DataArray:
         """Return a DataArray representation of the data.
 
         Parameters
         ----------
-        dims
-            Dimension names associated with this array.
         use_dask
             Use Dask to lazyload the array.
 
@@ -84,12 +82,15 @@ class TiffImage:
         -------
         Xarray DataArray
         """
-        coords = tuple([range(d) for d in self.shape])
+        if "coords" not in kwargs:
+            kwargs["coords"] = tuple([range(d) for d in self.shape])
+
         if use_dask:
             arr = self.to_dask()
         else:
             arr = self.asarray()
-        return xr.DataArray(arr, dims=dims, coords=coords)
+
+        return xr.DataArray(arr, **kwargs)
 
     def asarray(self, out=None, maxworkers=1) -> np.ndarray:
         """Return TIFF image as numpy array.
