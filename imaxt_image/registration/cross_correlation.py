@@ -2,12 +2,22 @@ from typing import Tuple
 
 import numpy as np
 from scipy.ndimage import fourier_gaussian, shift
-from skimage.feature.register_translation import (_compute_error,
-                                                  _compute_phasediff,
-                                                  _upsampled_dft)
 
 from .mutual_information import iqr
 from .utils import ShiftResult, extract_overlap
+
+try:
+    from skimage.feature.register_translation import (
+        _compute_error,
+        _compute_phasediff,
+        _upsampled_dft,
+    )
+except ModuleNotFoundError:
+    from skimage.registration._phase_cross_correlation import (
+        _compute_error,
+        _compute_phasediff,
+        _upsampled_dft,
+    )
 
 
 def find_shift(
