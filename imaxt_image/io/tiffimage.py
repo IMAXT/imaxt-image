@@ -38,16 +38,16 @@ class TiffImage:
     >>> arr1 = arr[0, 0]
     """
 
-    __slots__ = ['path', 'tiff']
+    __slots__ = ["path", "tiff"]
 
     def __init__(self, path: Union[str, Path]) -> None:
         if not isinstance(path, Path):
             path = Path(path)
         self.path = path
         if self.path.exists():
-            self.tiff = TiffFile(f'{path}')
+            self.tiff = TiffFile(f"{path}")
         else:
-            raise FileNotFoundError(f'File not found: {self.path}')
+            raise FileNotFoundError(f"File not found: {self.path}")
 
     @property
     def ndim(self) -> int:
@@ -110,14 +110,14 @@ class TiffImage:
         Currently only returns ImageJ or OME-TIFF metadata.
         """
         description = self.tiff.pages[0].description
-        if 'OME' not in description:
+        if "OME" not in description:
             return None
         return Metadata(description)
 
     @property
     def omemetadata(self) -> OMEXMLMetadata:
         description = self.tiff.pages[0].description
-        if 'OME' not in description:
+        if "OME" not in description:
             return None
         return OMEXMLMetadata(self.tiff.pages[0].description)
 
@@ -134,7 +134,7 @@ class TiffImage:
         compress
             compression level
         """
-        with TiffWriter(f'{filename}') as writer:
+        with TiffWriter(f"{filename}") as writer:
             writer.save(img, compress=compress)
 
     def close(self):
@@ -150,7 +150,7 @@ class TiffImage:
 @dask_serialize.register(TiffImage)
 def serialize(image: TiffImage) -> Tuple[Dict, List[bytes]]:
     header = {}
-    frames = [f'{image.path}'.encode()]
+    frames = [f"{image.path}".encode()]
     return header, frames
 
 

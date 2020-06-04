@@ -25,8 +25,8 @@ def find_shift(
     im0: np.ndarray,
     im1: np.ndarray,
     overlap: Tuple[float] = None,
-    border_width: int= 0,
-    upsample_factor: int=1,
+    border_width: int = 0,
+    upsample_factor: int = 1,
     initial_shift: Tuple[int] = None,
 ) -> ShiftResult:
     """Find shift between images using cross correlation.
@@ -73,10 +73,7 @@ def find_shift(
 
     ysize, xsize = im0.shape
     offset, error, phase = register_translation(
-        im0_cut,
-        im1_cut,
-        border_width=border_width,
-        upsample_factor=upsample_factor,
+        im0_cut, im1_cut, border_width=border_width, upsample_factor=upsample_factor,
     )
 
     yyt = offset[0]
@@ -95,28 +92,33 @@ def find_shift(
     for p in permutations:
         im = np.ones_like(im0)
         offset = [p[0] + initial_shift[0], p[1] + initial_shift[1]]
-        pixels = shift(im, offset, mode='constant', cval=0, order=1).sum()
+        pixels = shift(im, offset, mode="constant", cval=0, order=1).sum()
         if pixels > 0:
             nmi = iqr(im0_cut, im1_cut, offset=p)
             if nmi > mi:
                 if overlap is not None:
                     if (
-                       pixels >= xsize * ysize * overlap[0]
-                       and pixels <= xsize * ysize * overlap[1]
-                       ):
+                        pixels >= xsize * ysize * overlap[0]
+                        and pixels <= xsize * ysize * overlap[1]
+                    ):
                         res = [offset[0], offset[1], pixels / xsize / ysize, mi]
                         mi = nmi
                 else:
                     res = [offset[0], offset[1], pixels / xsize / ysize, mi]
                     mi = nmi
 
-    res = {'y': res[0], 'x': res[1],
-           'overlap': res[2], 'error': error, 'iqr': mi}
+    res = {"y": res[0], "x": res[1], "overlap": res[2], "error": error, "iqr": mi}
     return ShiftResult(res)
 
 
-def register_translation(src_image, target_image, upsample_factor=1,    # noqa: C901
-                         space="real", return_error=True, border_width=0):  # pragma: nocover
+def register_translation(  # noqa: C901
+    src_image,
+    target_image,
+    upsample_factor=1,
+    space="real",
+    return_error=True,
+    border_width=0,
+):  # pragma: nocover
     """
     Efficient subpixel image translation registration by cross-correlation.
     This code gives the same precision as the FFT upsampled cross-correlation
@@ -167,27 +169,30 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
     """
     # images must be the same shape
     if src_image.shape != target_image.shape:
-        raise ValueError("Error: images must be same size for "
-                         "register_translation")
+        raise ValueError("Error: images must be same size for " "register_translation")
 
     # assume complex data is already in Fourier space
-    if space.lower() == 'fourier':
+    if space.lower() == "fourier":
         src_freq = src_image
         target_freq = target_image
     # real data needs to be fft'd.
-    elif space.lower() == 'real':
+    elif space.lower() == "real":
         src_freq = np.fft.fftn(src_image)
         target_freq = np.fft.fftn(target_image)
     else:
-        raise ValueError("Error: register_translation only knows the \"real\" "
-                         "and \"fourier\" values for the ``space`` argument.")
+        raise ValueError(
+            'Error: register_translation only knows the "real" '
+            'and "fourier" values for the ``space`` argument.'
+        )
 
     # Whole-pixel shift - Compute cross-correlation by an IFFT
     src_freq = fourier_gaussian(src_freq, 5)
     target_freq = fourier_gaussian(target_freq, 5)
     shape = src_freq.shape
     image_product = src_freq * target_freq.conj()
-    norm = np.sqrt(src_freq * src_freq.conj() * target_freq * target_freq.conj()) + 1e-10
+    norm = (
+        np.sqrt(src_freq * src_freq.conj() * target_freq * target_freq.conj()) + 1e-10
+    )
     image_product = image_product / norm
     image_product = fourier_gaussian(image_product, 5)
     cross_correlation = np.fft.ifftn(image_product)
@@ -198,8 +203,9 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
         cross_correlation[:, -border_width:] = 0
 
     # Locate maximum
-    maxima = np.unravel_index(np.argmax(np.abs(cross_correlation)),
-                              cross_correlation.shape)
+    maxima = np.unravel_index(
+        np.argmax(np.abs(cross_correlation)), cross_correlation.shape
+    )
     midpoints = np.array([np.fix(axis_size / 2) for axis_size in shape])
 
     shifts = np.array(maxima, dtype=np.float64)
@@ -218,17 +224,20 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
         # Center of output array at dftshift + 1
         dftshift = np.fix(upsampled_region_size / 2.0)
         upsample_factor = np.array(upsample_factor, dtype=np.float64)
-        normalization = (src_freq.size * upsample_factor ** 2)
+        normalization = src_freq.size * upsample_factor ** 2
         # Matrix multiply DFT around the current shift estimate
         sample_region_offset = dftshift - shifts * upsample_factor
-        cross_correlation = _upsampled_dft(image_product.conj(),
-                                           upsampled_region_size,
-                                           upsample_factor,
-                                           sample_region_offset).conj()
+        cross_correlation = _upsampled_dft(
+            image_product.conj(),
+            upsampled_region_size,
+            upsample_factor,
+            sample_region_offset,
+        ).conj()
         cross_correlation /= normalization
         # Locate maximum and map back to original pixel grid
-        maxima = np.unravel_index(np.argmax(np.abs(cross_correlation)),
-                                  cross_correlation.shape)
+        maxima = np.unravel_index(
+            np.argmax(np.abs(cross_correlation)), cross_correlation.shape
+        )
         CCmax = cross_correlation[maxima]
 
         maxima = np.array(maxima, dtype=np.float64) - dftshift
@@ -236,11 +245,13 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
         shifts = shifts + maxima / upsample_factor
 
         if return_error:
-            src_amp = _upsampled_dft(src_freq * src_freq.conj(),
-                                     1, upsample_factor)[0, 0]
+            src_amp = _upsampled_dft(src_freq * src_freq.conj(), 1, upsample_factor)[
+                0, 0
+            ]
             src_amp /= normalization
-            target_amp = _upsampled_dft(target_freq * target_freq.conj(),
-                                        1, upsample_factor)[0, 0]
+            target_amp = _upsampled_dft(
+                target_freq * target_freq.conj(), 1, upsample_factor
+            )[0, 0]
             target_amp /= normalization
 
     # If its only one row or column the shift along that dimension has no
@@ -250,7 +261,10 @@ def register_translation(src_image, target_image, upsample_factor=1,    # noqa: 
             shifts[dim] = 0
 
     if return_error:
-        return shifts, _compute_error(CCmax, src_amp, target_amp),\
-            _compute_phasediff(CCmax)
+        return (
+            shifts,
+            _compute_error(CCmax, src_amp, target_amp),
+            _compute_phasediff(CCmax),
+        )
     else:
         return shifts
