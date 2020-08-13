@@ -1,5 +1,7 @@
 from math import ceil
 from pathlib import Path
+from glob import glob
+import os
 
 import dask
 import datashader as ds
@@ -10,8 +12,12 @@ import panel as pn
 import xarray as xr
 from bokeh.models import HoverTool
 from bokeh.util.serialization import make_globally_unique_id
-from holoviews import opts, streams
+from holoviews import streams
 from holoviews.plotting.links import RangeToolLink
+from scipy.stats import median_absolute_deviation as mad
+import asyncio
+from contextlib import suppress
+
 
 css = """
 .custom-wbox > div.bk {
@@ -122,6 +128,26 @@ def remove_bokeh_logo(plot, element):
     plot.state.toolbar.logo = None
 
 
+async def async_play(dv, n1, n2, step, wait, saveas):
+    if saveas is not None:
+        for f in glob("tmpplot_???.png"):
+            os.unlink(f)
+
+    for i in range(n1, n2, step):
+        dv.buffer = False
+        dv.goto(i)
+        dv.buffer = True
+        if saveas is not None:
+            element = dv.main.data[()]
+            p = hv.render(element, backend="matplotlib")
+            p.axes[0].set_axis_off()
+            p.savefig(
+                f"tmpplot_{i-n1:03d}.png", bbox_inches="tight", pad_inches=0, dpi=300
+            )
+        await asyncio.sleep(wait)
+    os.system(f"ffmpeg -y -r 1 -i tmpplot_%03d.png -vcodec mpeg4 {saveas}")
+
+
 class StptDataset:
     def __init__(self, sample, path=None):
         self.path = Path(path)
@@ -129,7 +155,11 @@ class StptDataset:
         mos = f"{self.path / sample}/mos.zarr"
         ds = xr.open_zarr(mos).sel(type="mosaic")
         levels = ds.attrs["multiscale"]["datasets"]
-        self.ds = {k["level"]: xr.open_zarr(mos, group=k["path"]) for k in levels}
+        self.ds = {
+            k["level"]: xr.open_zarr(mos, group=k["path"]).sel(type="mosaic")
+            for k in levels
+        }
+        self.ds = {k: self.ds[k] * self.bscale + self.bzero for k in self.ds}
         self.scl = [k["level"] for k in levels]
         self.nlevels = len(self.scl)
 
@@ -168,15 +198,27 @@ class StptDataset:
     def __getitem__(self, key):
         return self.ds[key]
 
-    def compute_scale(self, x_range, y_range):
+    def compute_scale(self, x_range, y_range, res=900):
         if not x_range:
             return self.scl[-1]
 
         xdiff = abs(x_range[0] - x_range[1])
-        scale = np.array([0, 800 * 1, 800 * 2, 800 * 4, 800 * 8, 800 * 16, 800 * 32])
+        scale = np.array([0, res * 1, res * 2, res * 4, res * 8, res * 16, res * 32])
         scl = scale.searchsorted(xdiff)
         scl = min(self.nlevels, scl)
         return self.scl[scl - 1]
+
+    def display_interval(self, channel):
+        m = self.ds[32]["S001"].sel(channel=channel, z=0).values
+        mm = np.median(m[m > 0])
+        ss = mad(m[m > 0])
+        return mm - ss, mm + 100 * ss
+
+    def info(self):
+        print(f"Channels: {self.channels}")
+        print(f"Physical Slices: {len(self.ds[1])}")
+        print(f"Optical Slices: {self.nz}")
+        print(f"Mosaic size: {self.shape}")
 
 
 class regrid(hd.regrid):
@@ -236,15 +278,12 @@ class regrid(hd.regrid):
 
 class StptDataViewer:
     def __init__(self, name, path="/data/meds1_b/processed/STPT/"):
+        self.name = name
         self.ds = StptDataset(name, path=path)
+        self.dataset = self.ds
+        self.buffer = True
 
-        # self.miniview = self.get_miniview().clone(link=False).opts(width=200, height=200, xaxis=None, yaxis=None, default_tools=[], shared_axes=False)
-        # self.image = self.get_image().opts(clone=True, responsive=True, aspect='equal')
-        # RangeToolLink(self.miniview, self.image, axes=['x', 'y'])
-        # self.display = self.image + self.miniview
-        # tmpl.add_panel('A', pn.Row(pn.panel(self.image), pn.Column(pn.panel(self.miniview))))
-        # self.slide = []
-        # self.n = 0
+    # Setup GUI
 
     def setup_template(self, height=600):
         self.tmpl = pn.Template(
@@ -263,74 +302,57 @@ class StptDataViewer:
             name="Slide No.", start=1, end=self.ds.nslides, value=1, width=200
         )
         slider.param.watch(self.update_slide, "value_throttled")
-        self.indeterminate = pn.widgets.Progress(
-            name="Indeterminate Progress", active=True
-        )
-
-        if not channels:
-            channels = [1, 2, 3]
-
-        rsel = pn.widgets.Select(
-            name="R", options=self.ds.channels, value=channels[0], width=200
-        )
-        rsel = pn.Column(
-            rsel
-        )  # , pn.Row(pn.widgets.TextInput(name='Min', value=f'{self.rscale[0]), pn.widgets.TextInput(name='Max'), width=200))
-
-        gsel = pn.widgets.Select(
-            name="G", options=self.ds.channels, value=channels[1], width=200
-        )
-        gsel = pn.Column(
-            gsel
-        )  # , pn.Row(pn.widgets.TextInput(name='Min'), pn.widgets.TextInput(name='Max'), width=200))
-
-        bsel = pn.widgets.Select(
-            name="B", options=self.ds.channels, value=channels[2], width=200
-        )
-        bsel = pn.Column(
-            bsel
-        )  # , pn.Row(pn.widgets.TextInput(name='Min'), pn.widgets.TextInput(name='Max'), width=200))
-
-        button = pn.widgets.Button(name="Redraw", button_type="primary")
-        button.on_click(self.redraw)
 
         self.controller = pn.WidgetBox(
             slider,
-            rsel,
-            gsel,
-            bsel,
-            pn.layout.VSpacer(),
-            button,
             css_classes=["widget-box", "custom-wbox"],
             sizing_mode="stretch_both",
         )
 
-    def redraw(self, event):
-        self.main.opts(xaxis=None, yaxis=None)
-        self.pipe.send({"section": self.controller[0].value})
+    # Play methods
 
-    def histogram(self):
-        layout = []
-        for i in self.ds.channels:
-            data = (
-                self.ds[16]["S001"].sel(type="mosaic", channel=i, z=0).values
-                * self.ds.bscale
-                + self.ds.bzero
-            )
-            m = data[data > 0].mean()
-            s = data[data > 0].std()
-            mask = (data > m - 2 * s) & (data < m + 2 * s)
-            frequencies, edges = np.histogram(data[mask], 20)
-            layout.append(
-                hv.Histogram((edges, frequencies)).opts(
-                    title=f"Channel {i}", shared_axes=False
-                )
-            )
-        return pn.Row(hv.Layout(layout))
+    def play(self, start=None, end=None, step=1, wait=2, saveas=None):
+        start = start or 1
+        end = end or self.ds.nslides
+        if end > self.ds.nslides:
+            end = self.ds.nslides
+        if end < 1:
+            end = 1
+        self.coro = asyncio.create_task(
+            async_play(self, start, end, step, wait, saveas)
+        )
+        print(f"The display will now cycle from slices {start} to {end}")
+        if saveas is not None:
+            print(f"At the end, a movie file will ba saved as {saveas}")
+
+    def stop(self):
+        with suppress(Exception):
+            self.coro.cancel()
 
     def goto(self, section):
         self.controller[0].value = section
         self.pipe.send({"section": section})
+
+    # Image operations
+
+    def get_rgb(self, n, scl):
+        rlow, rhigh = self.rscale
+        glow, ghigh = self.gscale
+        blow, bhigh = self.bscale
+
+        section = ceil(n / self.ds.nz)
+        z = n - (section - 1) * self.ds.nz - 1
+
+        r = self.ds[scl][f"S{section:03d}"].sel(channel=self.channels[0], z=z).data
+        r = (r.clip(rlow, rhigh) - rlow) / (rhigh - rlow)
+
+        g = self.ds[scl][f"S{section:03d}"].sel(channel=self.channels[1], z=z).data
+        g = (g.clip(glow, ghigh) - glow) / (ghigh - glow)
+
+        b = self.ds[scl][f"S{section:03d}"].sel(channel=self.channels[2], z=z).data
+        b = (b.clip(blow, bhigh) - blow) / (bhigh - blow)
+
+        return (r, g, b)
 
     def get_image(self, data=None, x_range=None, y_range=None, x=None, y=None):
 
@@ -341,40 +363,13 @@ class StptDataViewer:
         if not data:
             data = {}
 
-        scl = self.ds.compute_scale(x_range, y_range)
+        scl = self.ds.compute_scale(x_range, y_range, res=self.resolution)
         self.scl = scl
 
         n = data.get("section", 1)
+        self.current_section = n
 
-        section = ceil(n / self.ds.nz)
-        z = n - (section - 1) * self.ds.nz - 1
-
-        r = (
-            self.ds[scl][f"S{section:03d}"]
-            .sel(type="mosaic", channel=self.channels[0], z=z)
-            .data
-            * self.ds.bscale
-            + self.ds.bzero
-        )
-        r = (r.clip(rlow, rhigh) - rlow) / (rhigh - rlow)
-
-        g = (
-            self.ds[scl][f"S{section:03d}"]
-            .sel(type="mosaic", channel=self.channels[1], z=z)
-            .data
-            * self.ds.bscale
-            + self.ds.bzero
-        )
-        g = (g.clip(glow, ghigh) - glow) / (ghigh - glow)
-
-        b = (
-            self.ds[scl][f"S{section:03d}"]
-            .sel(type="mosaic", channel=self.channels[2], z=z)
-            .data
-            * self.ds.bscale
-            + self.ds.bzero
-        )
-        b = (b.clip(blow, bhigh) - blow) / (bhigh - blow)
+        r, g, b = self.get_rgb(n, scl)
 
         try:
             chunksize = r.chunksize[0]
@@ -429,35 +424,8 @@ class StptDataViewer:
 
         n = data.get("section", 1)
         scl = 1
-        section = ceil(n / self.ds.nz)
-        z = n - (section - 1) * self.ds.nz - 1
 
-        r = (
-            self.ds[scl][f"S{section:03d}"]
-            .sel(type="mosaic", channel=self.channels[0], z=z)
-            .data
-            * self.ds.bscale
-            + self.ds.bzero
-        )
-        r = (r.clip(rlow, rhigh) - rlow) / (rhigh - rlow)
-
-        g = (
-            self.ds[scl][f"S{section:03d}"]
-            .sel(type="mosaic", channel=self.channels[1], z=z)
-            .data
-            * self.ds.bscale
-            + self.ds.bzero
-        )
-        g = (g.clip(glow, ghigh) - glow) / (ghigh - glow)
-
-        b = (
-            self.ds[scl][f"S{section:03d}"]
-            .sel(type="mosaic", channel=self.channels[2], z=z)
-            .data
-            * self.ds.bscale
-            + self.ds.bzero
-        )
-        b = (b.clip(blow, bhigh) - blow) / (bhigh - blow)
+        r, g, b = self.get_rgb(n, scl)
 
         try:
             x1 = int(x) - width // 2
@@ -494,7 +462,11 @@ class StptDataViewer:
 
     def mainview(self):
         image = hv.DynamicMap(self.get_image, streams=[self.pipe, self.range_xy])
-        return regrid(image)
+        if self.buffer:
+            res = regrid(image)
+        else:
+            res = hd.regrid(image)
+        return res
 
     def miniview(self):
         image = hv.DynamicMap(self.get_image, streams=[self.pipe])
@@ -505,14 +477,24 @@ class StptDataViewer:
         image = hv.DynamicMap(self.get_image_zoom, streams=[self.pipe, self.pointer])
         return image
 
-    @property
-    def channels(self):
-        return [self.controller[i][0].value for i in [1, 2, 3]]
+    # Viewer
 
-    def view(self, *, channels, rscale, gscale, bscale, show_miniview=True, height=600):
-        self.rscale = rscale
-        self.gscale = gscale
-        self.bscale = bscale
+    def view(
+        self,
+        *,
+        channels,
+        rscale=None,
+        gscale=None,
+        bscale=None,
+        show_miniview=True,
+        height=600,
+        resolution=900,
+    ):
+        self.channels = channels
+        self.resolution = resolution
+        self.rscale = rscale or self.ds.display_interval(channels[0])
+        self.gscale = gscale or self.ds.display_interval(channels[1])
+        self.bscale = bscale or self.ds.display_interval(channels[2])
 
         self.setup_streams()
         self.setup_controller(channels=channels)
@@ -528,6 +510,7 @@ class StptDataViewer:
             responsive=True,
             hooks=[remove_bokeh_logo],
             default_tools=[hover],
+            title=f"Sample: {self.name}",
         )
 
         boxes = hv.Rectangles([])
@@ -535,7 +518,7 @@ class StptDataViewer:
             source=boxes,
             styles={"fill_color": ["yellow", "red", "green", "blue", "cyan"]},
         )
-        boxes = boxes.opts(opts.Rectangles(active_tools=[], fill_alpha=0.5))
+        boxes = boxes.opts(hv.opts.Rectangles(active_tools=[], fill_alpha=0.5))
 
         overlay = hd.regrid(hv.Image([]), streams=[self.pointer])
 
