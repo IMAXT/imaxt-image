@@ -1,7 +1,9 @@
+import asyncio
+import os
+from contextlib import suppress
+from glob import glob
 from math import ceil
 from pathlib import Path
-from glob import glob
-import os
 
 import dask
 import datashader as ds
@@ -15,9 +17,6 @@ from bokeh.models import HoverTool
 from bokeh.util.serialization import make_globally_unique_id
 from holoviews import streams
 from holoviews.plotting.links import RangeToolLink
-from scipy.stats import median_absolute_deviation as mad
-import asyncio
-from contextlib import suppress
 
 
 css = """
@@ -455,7 +454,15 @@ class StptDataViewer:
         ib = b[y1:y2, x1:x2]
         ir, ig, ib = dask.compute([ir, ig, ib])[0]
 
-        im = hv.RGB((range(0, width), range(0, width), ir, ig, ib,))
+        im = hv.RGB(
+            (
+                range(0, width),
+                range(0, width),
+                ir,
+                ig,
+                ib,
+            )
+        )
         return im
 
     def update_slide(self, event):
