@@ -10,6 +10,7 @@ import holoviews.operation.datashader as hd
 import numpy as np
 import panel as pn
 import xarray as xr
+from astropy.visualization import PercentileInterval
 from bokeh.models import HoverTool
 from bokeh.util.serialization import make_globally_unique_id
 from holoviews import streams
@@ -208,11 +209,11 @@ class StptDataset:
         scl = min(self.nlevels, scl)
         return self.scl[scl - 1]
 
-    def display_interval(self, channel):
-        m = self.ds[32]["S001"].sel(channel=channel, z=0).values
-        mm = np.median(m[m > 0])
-        ss = mad(m[m > 0])
-        return mm - ss, mm + 100 * ss
+    def display_interval(self, channel, percentile):
+        zs = PercentileInterval(percentile)
+        data = self.ds[8]["S001"].sel(channel=channel, z=0).values
+        mask = data > 0
+        return zs.get_limits(data[mask])
 
     def info(self):
         print(f"Channels: {self.channels}")
@@ -486,15 +487,16 @@ class StptDataViewer:
         rscale=None,
         gscale=None,
         bscale=None,
+        percentile=98,
         show_miniview=True,
         height=600,
         resolution=900,
     ):
         self.channels = channels
         self.resolution = resolution
-        self.rscale = rscale or self.ds.display_interval(channels[0])
-        self.gscale = gscale or self.ds.display_interval(channels[1])
-        self.bscale = bscale or self.ds.display_interval(channels[2])
+        self.rscale = rscale or self.ds.display_interval(channels[0], percentile)
+        self.gscale = gscale or self.ds.display_interval(channels[1], percentile)
+        self.bscale = bscale or self.ds.display_interval(channels[2], percentile)
 
         self.setup_streams()
         self.setup_controller(channels=channels)
