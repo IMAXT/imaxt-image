@@ -16,6 +16,7 @@ requirements = [
     'dask',
     'xarray',
     'scikit-image',
+    'xtiff',
 ]
 
 setup_requirements = ['pytest-runner', 'flake8']
