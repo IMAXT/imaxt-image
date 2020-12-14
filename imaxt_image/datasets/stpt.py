@@ -21,7 +21,17 @@ class STPTSection:
         print("Written", out)
 
     def __getitem__(self, item):
-        return STPTSection(self.ds[:, :, item[0], item[1]], self.meta)
+        yslice, xslice = item
+        scale = self.meta["scale"]
+        ystart, yend = yslice.start // scale, yslice.stop // scale
+        xstart, xend = xslice.start // scale, xslice.stop // scale
+        return STPTSection(self.ds[:, :, ystart:yend, xstart:xend], self.meta)
+
+    def __repr__(self):
+        return self.ds.__repr__()
+
+    def _repr_html_(self):
+        return self.ds._repr_html_()
 
 
 class STPTDataset:
@@ -66,3 +76,9 @@ class STPTDataset:
             "section": item,
         }
         return STPTSection(self.ds[item], meta)
+
+    def __repr__(self):
+        return self.ds.__repr__()
+
+    def _repr_html_(self):
+        return self.ds._repr_html_()
