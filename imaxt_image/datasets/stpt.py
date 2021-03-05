@@ -1,7 +1,17 @@
+import json
+
 import xarray as xr
 import xtiff
 import zarr
 from pathlib import Path
+
+
+def get_ome_xml(*args, **kwargs):
+    metadata = kwargs["ome_xml_kwargs"].pop("metadata")
+    res = xtiff.get_ome_xml(*args, **kwargs)
+    root = res.getroot()
+    root.set("json_metadata", json.dumps(metadata))
+    return res
 
 
 class STPTSection:
@@ -17,7 +27,10 @@ class STPTSection:
         else:
             dir = Path(dir)
         out = f"{dir}/{name}_{section}_{group or 'l.1'}.ome.tiff"
-        xtiff.to_tiff(self.ds.data, out)
+        xtiff.to_tiff(self.ds.data,
+                      out,
+                      ome_xml_fun=get_ome_xml,
+                      ome_xml_kwargs={"metadata": self.meta})
         print("Written", out)
 
     def __getitem__(self, item):
@@ -45,9 +58,9 @@ class STPTDataset:
         self._read_dataset()
 
     def _read_bscale_bzero(self):
-        z = zarr.open(f"{self.mos}", mode="r")
-        self.bscale = z.attrs["bscale"]
-        self.bzero = z.attrs["bzero"]
+        self.z = zarr.open(f"{self.mos}", mode="r")
+        self.bscale = self.z.attrs["bscale"]
+        self.bzero = self.z.attrs["bzero"]
 
     def _read_dataset(self, clip=(0, 2 ** 16 - 1), multiplier=1000):
         if self.scale == 1:
@@ -70,10 +83,11 @@ class STPTDataset:
         else:
             item = key
         meta = {
-            "name": self.name,
+            "name": f"{self.name}",
             "scale": self.scale,
             "group": self.group,
             "section": item,
+            "meta": self.z.attrs.asdict(),
         }
         return STPTSection(self.ds[item], meta)
 
