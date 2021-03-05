@@ -4,22 +4,19 @@ with open('README.rst') as readme_file:
     readme = readme_file.read()
 
 requirements = [
-    'astropy',
-    'matplotlib',
-    'numpy',
-    'scipy',
-    'xmltodict',
-    'holoviews',
-    'datashader',
-    'imagecodecs-lite',
-    'zarr',
-    'dask',
-    'xarray',
-    'scikit-image',
-    'xtiff',
+    "astropy",
+    "numpy",
+    "scipy",
+    "xmltodict",
+    "imagecodecs-lite",
+    "zarr",
+    "dask",
+    "xarray",
+    "scikit-image",
+    "xtiff",
 ]
 
-setup_requirements = ['pytest-runner', 'flake8']
+extras_requirements = {"pyviz": ["matplotlib", "holoviews", "datashader"]}
 
 test_requirements = ['coverage', 'pytest', 'pytest-cov', 'pytest-mock']
 
@@ -45,7 +42,8 @@ setup(
     name='imaxt-image',
     packages=find_packages(include=['imaxt*']),
     setup_requires=setup_requirements,
-    test_suite='tests',
+    extras_requires=extras_requirements,
+    test_suite="tests",
     tests_require=test_requirements,
     url='https://gitlab.ast.cam.ac.uk/imaxt/imaxt-image',
     version='0.15.5',
