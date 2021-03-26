@@ -187,17 +187,17 @@ def phase_cross_correlation(  # noqa: C901
 
     References
     ----------
-    .. [1] Manuel Guizar-Sicairos, Samuel T. Thurman, and James R. Fienup,
+    .. Manuel Guizar-Sicairos, Samuel T. Thurman, and James R. Fienup,
            "Efficient subpixel image registration algorithms,"
-           Optics Letters 33, 156-158 (2008). :DOI:`10.1364/OL.33.000156`
-    .. [2] James R. Fienup, "Invariant error metrics for image reconstruction"
-           Optics Letters 36, 8352-8357 (1997). :DOI:`10.1364/AO.36.008352`
-    .. [3] Dirk Padfield. Masked Object Registration in the Fourier Domain.
+           Optics Letters 33, 156-158 (2008). DOI: 10.1364/OL.33.000156
+    .. James R. Fienup, "Invariant error metrics for image reconstruction"
+           Optics Letters 36, 8352-8357 (1997). DOI: 10.1364/AO.36.008352
+    .. Dirk Padfield. Masked Object Registration in the Fourier Domain.
            IEEE Transactions on Image Processing, vol. 21(5),
-           pp. 2706-2718 (2012). :DOI:`10.1109/TIP.2011.2181402`
-    .. [4] D. Padfield. "Masked FFT registration". In Proc. Computer Vision and
+           pp. 2706-2718 (2012). DOI: 10.1109/TIP.2011.2181402
+    .. D. Padfield. "Masked FFT registration". In Proc. Computer Vision and
            Pattern Recognition, pp. 2918-2925 (2010).
-           :DOI:`10.1109/CVPR.2010.5540032`
+           DOI: 10.1109/CVPR.2010.5540032
 
     """
     if (reference_mask is not None) or (moving_mask is not None):
