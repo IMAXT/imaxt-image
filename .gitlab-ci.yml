@@ -10,6 +10,7 @@ test:
     - pip install --user -r requirements_dev.txt
     - export MPLBACKEND="Agg"
     - pip install imagecodecs-lite
+    - pip install -U "scikit-image>0.17" pooch
     - python setup.py develop --user
     - python setup.py flake8
     - python setup.py build_sphinx -W
@@ -26,6 +27,7 @@ deploy:
   script:
     - pip install --user -r requirements_dev.txt
     - pip install imagecodecs-lite
+    - pip install -U "scikit-image>0.17" pooch
     - python setup.py sdist
     - curl -X MKCOL $REPO/imaxt-image
     - curl -XPUT $REPO/imaxt-image/imaxt-image-0.15.6.tar.gz --data-binary @dist/imaxt-image-0.15.6.tar.gz
