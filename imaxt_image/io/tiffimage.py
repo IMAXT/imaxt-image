@@ -9,7 +9,7 @@ import xarray as xr
 from dask import delayed
 from distributed.protocol import dask_deserialize, dask_serialize
 
-from imaxt_image.external.tifffile import TiffFile, TiffWriter
+from tifffile import TiffFile, TiffWriter
 from imaxt_image.io.metadata import Metadata
 from imaxt_image.io.omexmlmetadata import OMEXMLMetadata
 
@@ -55,19 +55,16 @@ class TiffImage:
 
     @property
     def shape(self) -> Tuple[int, ...]:
-        """Return size of image.
-        """
+        """Return size of image."""
         return self.tiff.series[0].pages.shape
 
     @property
     def dtype(self):
-        """Return type of data.
-        """
+        """Return type of data."""
         return self.tiff.series[0].pages.dtype
 
     def to_dask(self, chunks=None):
-        """Return a dask.array representation of the data.
-        """
+        """Return a dask.array representation of the data."""
         return da.from_delayed(_imread(self.path), shape=self.shape, dtype=self.dtype)
 
     def to_xarray(self, use_dask=True, **kwargs) -> xr.DataArray:
