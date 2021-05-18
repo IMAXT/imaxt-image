@@ -48,7 +48,7 @@ class STPTSection:
         dd = self.ds.data
         ndim = len(self.ds.data.shape)
         depth = [0] * (ndim - 2) + [100, 100]
-        ndd = dd.map_overlap(image_shift(), depth=depth, offsets=self.offsets)
+        ndd = dd.map_overlap(image_shift, depth=depth, offsets=self.offsets)
         return ndd
 
     @property
