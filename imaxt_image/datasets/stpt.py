@@ -1,12 +1,32 @@
+from pathlib import Path
+
+import numpy as np
 import xarray as xr
 import xtiff
 import zarr
-from pathlib import Path
+from scipy import ndimage as ndi
+
+
+def image_shift(data, offsets, block_info=None):
+    if block_info is not None:
+        ndim = len(data.shape)
+        dd = data.squeeze()
+        try:
+            ndd = ndi.shift(dd, offsets)
+        except Exception:
+            ndd = data
+        for _i in range(ndim - 2):
+            ndd = ndd[np.newaxis, :]
+    else:
+        ndd = data
+    return ndd
 
 
 class STPTSection:
     def __init__(self, ds, meta):
         self.ds = ds.astype("uint16")
+        self.ds.attrs = meta["attrs"]
+        self.offsets = meta["offsets"]
         self.meta = meta
 
     def to_tiff(self, name, dir=None):
@@ -17,8 +37,27 @@ class STPTSection:
         else:
             dir = Path(dir)
         out = f"{dir}/{name}_{section}_{group or 'l.1'}.ome.tiff"
-        xtiff.to_tiff(self.ds.data, out)
+        xtiff.to_tiff(self.data, out)
         print("Written", out)
+
+    def sel(self, **kwargs):
+        return STPTSection(self.ds.sel(**kwargs), self.meta)
+
+    @property
+    def data(self):
+        dd = self.ds.data
+        ndim = len(self.ds.data.shape)
+        depth = [0] * (ndim - 2) + [100, 100]
+        ndd = dd.map_overlap(image_shift(), depth=depth, offsets=self.offsets)
+        return ndd
+
+    @property
+    def values(self):
+        return self.ds.values
+
+    @property
+    def attrs(self):
+        return self.ds.attrs
 
     def __getitem__(self, item):
         yslice, xslice = item
@@ -49,6 +88,21 @@ class STPTDataset:
         self.bscale = z.attrs["bscale"]
         self.bzero = z.attrs["bzero"]
 
+    def _read_metadata(self):
+        ds0 = xr.open_zarr(f"{self.mos}")
+        return ds0.attrs
+
+    def _read_offsets(self):
+        offsets = {
+            s: [dx, dy]
+            for s, dx, dy in zip(
+                list(self.ds),
+                self.attrs["cube_reg"]["abs_dx"],
+                self.attrs["cube_reg"]["abs_dy"],
+            )
+        }
+        return offsets
+
     def _read_dataset(self, clip=(0, 2 ** 16 - 1), multiplier=1000):
         if self.scale == 1:
             self.group = ""
@@ -57,9 +111,16 @@ class STPTDataset:
         self.ds = xr.open_zarr(f"{self.mos}", group=self.group)
         self.ds = self.ds.sel(type="mosaic") * self.bscale + self.bzero
         self.ds = self.ds.clip(clip[0], clip[1]) * multiplier
+        if self.scale > 1:
+            self.ds.attrs = self._read_metadata()
+        self.offsets = self._read_offsets()
 
     def sel(self, scale=1, **kwargs):
         return STPTDataset(self.name, self.path, scale)
+
+    @property
+    def attrs(self):
+        return self.ds.attrs
 
     def __len__(self):
         return len(self.ds)
@@ -74,6 +135,8 @@ class STPTDataset:
             "scale": self.scale,
             "group": self.group,
             "section": item,
+            "attrs": self.attrs,
+            "offsets": [item / self.scale for item in self.offsets[item]],
         }
         return STPTSection(self.ds[item], meta)
 
