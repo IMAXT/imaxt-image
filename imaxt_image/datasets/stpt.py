@@ -26,7 +26,7 @@ class STPTSection:
     def __init__(self, ds, meta):
         self.ds = ds.astype("uint16")
         self.ds.attrs = meta["attrs"]
-        self.offsets = meta["offsets"]
+        self.offsets = np.nan_to_num(meta["offsets"])
         self.meta = meta
 
     def to_tiff(self, name, dir=None):
@@ -47,7 +47,8 @@ class STPTSection:
     def data(self):
         dd = self.ds.data
         ndim = len(self.ds.data.shape)
-        depth = [0] * (ndim - 2) + [100, 100]
+        depth = np.abs(self.offsets).max() + 100
+        depth = [0] * (ndim - 2) + [depth] * 2
         ndd = dd.map_overlap(image_shift, depth=depth, offsets=self.offsets)
         return ndd
 
