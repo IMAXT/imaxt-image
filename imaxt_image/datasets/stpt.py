@@ -121,8 +121,8 @@ class STPTDataset:
             self.ds.attrs = self._read_metadata()
         try:
             self.offsets = self._read_offsets()
-            self.offsets = [item / self.scale for item in self.offsets[item]]
-        except:
+            self.offsets = [item / self.scale for item in self.offsets]
+        except Exception:
             self.offsets = None
 
     def sel(self, scale=1, **kwargs):
