@@ -30,7 +30,7 @@ deploy:
     - pip install -U "scikit-image>0.17" pooch
     - python setup.py sdist
     - curl -X MKCOL $REPO/imaxt-image
-    - curl -XPUT $REPO/imaxt-image/imaxt-image-0.16.0.tar.gz --data-binary @dist/imaxt-image-0.16.0.tar.gz
+    - curl -XPUT $REPO/imaxt-image/imaxt-image-0.16.1.tar.gz --data-binary @dist/imaxt-image-0.16.1.tar.gz
   environment:
     name: Repository
     url: http://imaxt.ast.cam.ac.uk/pip/imaxt-image/
