@@ -12,7 +12,7 @@ requirements = [
     "zarr",
     "dask",
     "xarray",
-    "scikit-image",
+    "scikit-image>=0.18",
     "xtiff",
 ]
 
