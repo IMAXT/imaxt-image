@@ -26,7 +26,9 @@ class STPTSection:
     def __init__(self, ds, meta):
         self.ds = ds.astype("uint16")
         self.ds.attrs = meta["attrs"]
-        self.offsets = np.nan_to_num(meta["offsets"])
+        self.offsets = meta["offsets"]
+        if self.offsets is not None:
+            self.offsets = np.nan_to_num(meta["offsets"])
         self.meta = meta
 
     def to_tiff(self, name, dir=None):
@@ -46,10 +48,13 @@ class STPTSection:
     @property
     def data(self):
         dd = self.ds.data
-        ndim = len(self.ds.data.shape)
-        depth = np.abs(self.offsets).max() + 100
-        depth = [0] * (ndim - 2) + [depth] * 2
-        ndd = dd.map_overlap(image_shift, depth=depth, offsets=self.offsets)
+        if self.offsets is not None:
+            ndim = len(self.ds.data.shape)
+            depth = np.abs(self.offsets).max() + 100
+            depth = [0] * (ndim - 2) + [depth] * 2
+            ndd = dd.map_overlap(image_shift, depth=depth, offsets=self.offsets)
+        else:
+            ndd = dd
         return ndd
 
     @property
@@ -114,7 +119,11 @@ class STPTDataset:
         self.ds = self.ds.clip(clip[0], clip[1]) * multiplier
         if self.scale > 1:
             self.ds.attrs = self._read_metadata()
-        self.offsets = self._read_offsets()
+        try:
+            self.offsets = self._read_offsets()
+            self.offsets = [item / self.scale for item in self.offsets[item]]
+        except:
+            self.offsets = None
 
     def sel(self, scale=1, **kwargs):
         return STPTDataset(self.name, self.path, scale)
@@ -137,7 +146,7 @@ class STPTDataset:
             "group": self.group,
             "section": item,
             "attrs": self.attrs,
-            "offsets": [item / self.scale for item in self.offsets[item]],
+            "offsets": self.offsets,
         }
         return STPTSection(self.ds[item], meta)
 
