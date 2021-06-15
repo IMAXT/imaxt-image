@@ -1,14 +1,11 @@
 from setuptools import find_packages, setup
 
-with open("README.rst") as readme_file:
-    readme = readme_file.read()
-
 requirements = [
     "astropy",
     "numpy",
     "scipy",
     "xmltodict",
-    "imagecodecs-lite",
+    "imagecodecs",
     "zarr",
     "dask",
     "xarray",
@@ -30,15 +27,12 @@ setup(
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
     ],
     description="IMAXT Image Utilities",
     install_requires=requirements,
     license="GNU General Public License v3",
-    long_description=readme,
+    long_description="IMAXT Image Utils",
     include_package_data=True,
     keywords="imaxt",
     name="imaxt-image",
@@ -50,9 +44,5 @@ setup(
     url="https://gitlab.ast.cam.ac.uk/imaxt/imaxt-image",
     version="0.16.1",
     zip_safe=False,
-    python_requires=">=3.5",
-    dependency_links=[
-        "https://imaxt.ast.cam.ac.uk/pip/imagecodecs-lite/",
-        "https://imaxt.ast.cam.ac.uk/pip/zarr",
-    ],
+    python_requires=">=3.7",
 )
