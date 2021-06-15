@@ -1,5 +1,9 @@
 from setuptools import find_packages, setup
 
+
+with open("README.md") as readme_file:
+    readme = readme_file.read()
+
 requirements = [
     "astropy",
     "numpy",
@@ -29,7 +33,7 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Programming Language :: Python :: 3.7",
     ],
-    description="IMAXT Image Utilities",
+    description=readme,
     install_requires=requirements,
     license="GNU General Public License v3",
     long_description="IMAXT Image Utils",
@@ -41,7 +45,7 @@ setup(
     extras_requires=extras_requirements,
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://gitlab.ast.cam.ac.uk/imaxt/imaxt-image",
+    url="https://github.com/IMAXT/imaxt-image",
     version="0.16.2",
     zip_safe=False,
     python_requires=">=3.7",
