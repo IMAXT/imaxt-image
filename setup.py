@@ -46,7 +46,7 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/IMAXT/imaxt-image",
-    version="0.16.2",
+    version="0.16.3",
     zip_safe=False,
     python_requires=">=3.7",
 )
