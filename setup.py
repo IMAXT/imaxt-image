@@ -24,7 +24,7 @@ setup_requirements = ["pytest-runner", "flake8"]
 test_requirements = ["coverage", "pytest", "pytest-cov", "pytest-mock"]
 
 setup(
-    author="IMAXT Team",
+    author="Eduardi Gonzalez Solares",
     maintainer="Eduardo Gonzalez Solares",
     maintainer_email="eglez@ast.cam.ac.uk",
     classifiers=[
