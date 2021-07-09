@@ -161,13 +161,14 @@ class StptDataset:
         try:
             self.consolidated = True
             ds = xr.open_zarr(mos, consolidated=True).sel(type="mosaic")
-        except:
+        except Exception:
             self.consolidated = False
             ds = xr.open_zarr(mos, consolidated=False).sel(type="mosaic")
         levels = ds.attrs["multiscale"]["datasets"]
         self.ds = {
-            k["level"]: xr.open_zarr(mos, group=k["path"],
-            consolidated=self.consolidated).sel(type="mosaic")
+            k["level"]: xr.open_zarr(
+                mos, group=k["path"], consolidated=self.consolidated
+            ).sel(type="mosaic")
             for k in levels
         }
         self.ds = {k: self.ds[k] * self.bscale + self.bzero for k in self.ds}
