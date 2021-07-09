@@ -150,13 +150,24 @@ async def async_play(dv, n1, n2, step, wait, saveas):
 
 class StptDataset:
     def __init__(self, sample, path=None):
-        self.path = Path(path)
+        if isinstance(sample, (Path, str)):
+            self.path = Path(path or ".")
+            mos = f"{self.path / sample}/mos.zarr"
+            self.name = sample
+        else:
+            mos = sample
+            self.name = ""
 
-        mos = f"{self.path / sample}/mos.zarr"
-        ds = xr.open_zarr(mos).sel(type="mosaic")
+        try:
+            self.consolidated = True
+            ds = xr.open_zarr(mos, consolidated=True).sel(type="mosaic")
+        except:
+            self.consolidated = False
+            ds = xr.open_zarr(mos, consolidated=False).sel(type="mosaic")
         levels = ds.attrs["multiscale"]["datasets"]
         self.ds = {
-            k["level"]: xr.open_zarr(mos, group=k["path"]).sel(type="mosaic")
+            k["level"]: xr.open_zarr(mos, group=k["path"],
+            consolidated=self.consolidated).sel(type="mosaic")
             for k in levels
         }
         self.ds = {k: self.ds[k] * self.bscale + self.bzero for k in self.ds}
@@ -278,8 +289,8 @@ class regrid(hd.regrid):
 
 class StptDataViewer:
     def __init__(self, name, path="/data/meds1_b/processed/STPT/"):
-        self.name = name
         self.ds = StptDataset(name, path=path)
+        self.name = self.ds.name
         self.dataset = self.ds
         self.buffer = True
 
