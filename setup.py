@@ -15,6 +15,7 @@ requirements = [
     "xarray",
     "scikit-image>=0.18",
     "xtiff",
+    "tifffile>=2021.7.2",
 ]
 
 extras_requirements = {"pyviz": ["matplotlib", "holoviews", "datashader"]}
