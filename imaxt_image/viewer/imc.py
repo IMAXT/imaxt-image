@@ -8,6 +8,7 @@ import os
 from holoviews.operation.datashader import regrid
 from datashader.utils import ngjit
 import cv2
+import scipy
 
 
 class IMCViewer:
@@ -15,14 +16,17 @@ class IMCViewer:
         self,
         IMC_name,
         ROI_number,
-        path="/data/meds1_d/storage/raw/imc/",
+        path=None,
         use_panel_file=False,
         panel_file=None,
         panel_skip_rows=4,
     ):
         self.IMC_name = IMC_name
         self.ROI_number = ROI_number
-        self.filepath = path
+        if path:
+            self.filepath = path
+        else:
+            self.filepath = "/data/meds1_d/storage/raw/imc/"
 
         print("Loading IMC dataset")
         path_to_open = (
@@ -63,7 +67,8 @@ class IMCViewer:
                 ].index.tolist()[0]
                 data_ch = self.data_cropped[ch_index, :, :]
                 if ch[4]:
-                    data_ch.data = cv2.medianBlur(data_ch.data, ch[4])
+                    data_ch.data = scipy.signal.medfilt2d(data_ch.data, ch[4])
+                    # data_ch.data = cv2.medianBlur(data_ch.data, ch[4])
                 data.append(data_ch)
                 mins.append(ch[1])
                 maxs.append(ch[2])
@@ -79,7 +84,8 @@ class IMCViewer:
                 ].index.tolist()[0]
                 data_ch = self.data[ch_index, :, :]
                 if ch[4]:
-                    data_ch.data = cv2.medianBlur(data_ch.data, ch[4])
+                    data_ch.data = scipy.signal.medfilt2d(data_ch.data, ch[4])
+                    # data_ch.data = cv2.medianBlur(data_ch.data, ch[4])
                 data.append(data_ch)
                 mins.append(ch[1])
                 maxs.append(ch[2])
@@ -365,6 +371,7 @@ class IMCViewer:
         scalebar=True,
         scalebar_size=100,
         return_rgb=False,
+        downsample=None,
     ):
 
         if individual:
@@ -406,10 +413,24 @@ class IMCViewer:
                 cv2.LINE_AA,
             )
 
-            cv2.imwrite(filename + ".png", rgb3)
+            if downsample:
+                width = int(rgb.shape[1] * downsample)
+                height = int(rgb.shape[0] * downsample)
+                dim = (width, height)
+                rgb4 = cv2.resize(rgb3, dim, interpolation=cv2.INTER_AREA)
+                cv2.imwrite(filename + ".png", rgb4)
+            else:
+                cv2.imwrite(filename + ".png", rgb3)
 
         else:
-            cv2.imwrite(filename + "png", rgb)
+            if downsample:
+                width = int(rgb.shape[1] * downsample)
+                height = int(rgb.shape[0] * downsample)
+                dim = (width, height)
+                rgb2 = cv2.resize(rgb, dim, interpolation=cv2.INTER_AREA)
+                cv2.imwrite(filename + ".png", rgb2)
+            else:
+                cv2.imwrite(filename + ".png", rgb)
 
         if return_rgb:
             return rgb
@@ -426,6 +447,11 @@ class IMCViewer:
         hist_colour="blue",
         path=".",
         median=None,
+        print_nuclear_ch=False,
+        nuclear_channel=None,
+        nuclear_max="p99",
+        nuclear_colour="blue",
+        downsample=None,
     ):
 
         self.individual_images = list()
@@ -433,10 +459,24 @@ class IMCViewer:
         for item in channels_to_show:
             channel = item[0]
             max_value = item[1]
-            ch_to_display = [[channel, 0, max_value, colour, median, channel]]
-            self.prepare_data(ch_to_display, cropped=True)
-            self.combine_ch_colors_cropped()
-            self.ROI_image_individual = self.rendered_image_cropped.select(
+            if print_nuclear_ch:
+                ch_to_display = [
+                    [channel, 0, max_value, colour, median, channel],
+                    [
+                        nuclear_channel,
+                        0,
+                        nuclear_max,
+                        nuclear_colour,
+                        median,
+                        nuclear_channel,
+                    ],
+                ]
+            else:
+                ch_to_display = [[channel, 0, max_value, colour, median, channel]]
+
+            self.prepare_data(ch_to_display)
+            self.combine_ch_colors()
+            self.ROI_image_individual = self.rendered_image.select(
                 x=self.x_range, y=self.y_range
             )
             self.individual_images.append(self.ROI_image_individual)
@@ -446,6 +486,7 @@ class IMCViewer:
                 scalebar=True,
                 scalebar_size=scalebar_size,
                 return_rgb=True,
+                downsample=downsample,
             )
 
             if print_histogram:
@@ -480,18 +521,35 @@ class IMCViewer:
         hist_colour="blue",
         path=".",
         median=None,
+        print_nuclear_ch=False,
+        nuclear_channel=None,
+        nuclear_max="p99",
+        nuclear_colour="blue",
+        downsample=None,
     ):
+
         self.all_images = list()
 
         for index, row in self.channels.iterrows():
             if row["good"] == 1:
                 channel = row["target"]
-                ch_to_display = [
-                    [channel, min_value, max_value, colour, median, channel]
-                ]
-                self.prepare_data(ch_to_display, cropped=True)
-                self.combine_ch_colors_cropped()
-                self.ROI_image_individual = self.rendered_image_cropped.select(
+                if print_nuclear_ch:
+                    ch_to_display = [
+                        [channel, 0, max_value, colour, median, channel],
+                        [
+                            nuclear_channel,
+                            0,
+                            nuclear_max,
+                            nuclear_colour,
+                            median,
+                            channel,
+                        ],
+                    ]
+                else:
+                    ch_to_display = [[channel, 0, max_value, colour, median, channel]]
+                self.prepare_data(ch_to_display)
+                self.combine_ch_colors()
+                self.ROI_image_individual = self.rendered_image.select(
                     x=self.x_range, y=self.y_range
                 )
                 self.all_images.append(self.ROI_image_individual)
@@ -501,6 +559,7 @@ class IMCViewer:
                     scalebar=True,
                     scalebar_size=scalebar_size,
                     return_rgb=True,
+                    downsample=downsample,
                 )
 
                 if print_histogram:
