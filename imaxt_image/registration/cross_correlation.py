@@ -2,19 +2,17 @@ from typing import Tuple
 
 import numpy as np
 import xarray as xr
+from scipy.fft import fft
 from scipy.ndimage import fourier_gaussian, shift
-
-from .mutual_information import iqr
-from .utils import ShiftResult, extract_overlap
-
-
 from skimage.registration._phase_cross_correlation import (
     _compute_error,
     _compute_phasediff,
-    _upsampled_dft,
     _masked_phase_cross_correlation,
-    fft,
+    _upsampled_dft,
 )
+
+from .mutual_information import iqr
+from .utils import ShiftResult, extract_overlap
 
 
 def find_shift(
