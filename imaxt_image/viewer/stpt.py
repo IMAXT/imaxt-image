@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 from contextlib import suppress
 from glob import glob
@@ -17,7 +18,6 @@ from bokeh.models import HoverTool
 from bokeh.util.serialization import make_globally_unique_id
 from holoviews import streams
 from holoviews.plotting.links import RangeToolLink
-
 
 css = """
 .custom-wbox > div.bk {
@@ -164,7 +164,10 @@ class StptDataset:
         except Exception:
             self.consolidated = False
             ds = xr.open_zarr(mos, consolidated=False).sel(type="mosaic")
-        levels = ds.attrs["multiscale"]["datasets"]
+        try:
+            levels = ds.attrs["multiscale"]["datasets"]
+        except TypeError:
+            levels = json.loads(ds.attrs["multiscale"])["datasets"]
         self.ds = {
             k["level"]: xr.open_zarr(
                 mos, group=k["path"], consolidated=self.consolidated
