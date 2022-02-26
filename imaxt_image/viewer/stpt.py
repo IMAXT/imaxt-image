@@ -7,6 +7,7 @@ from math import ceil
 from pathlib import Path
 
 import dask
+import s3fs
 import datashader as ds
 import holoviews as hv
 import holoviews.operation.datashader as hd
@@ -18,6 +19,7 @@ from bokeh.models import HoverTool
 from bokeh.util.serialization import make_globally_unique_id
 from holoviews import streams
 from holoviews.plotting.links import RangeToolLink
+
 
 css = """
 .custom-wbox > div.bk {
@@ -148,30 +150,46 @@ async def async_play(dv, n1, n2, step, wait, saveas):
     os.system(f"ffmpeg -y -r 1 -i tmpplot_%03d.png -vcodec mpeg4 {saveas}")
 
 
-class StptDataset:
-    def __init__(self, sample, path=None):
-        if isinstance(sample, (Path, str)):
-            self.path = Path(path or ".")
-            mos = f"{self.path / sample}/mos.zarr"
-            self.name = sample
-        else:
-            mos = sample
-            self.name = ""
+def get_mc_config(alias):
+    p = Path("~/.mc/config.json").expanduser()
+    with open(p, "r") as fh:
+        config = json.loads(fh.read())
+    return config["aliases"][alias]
 
-        try:
-            self.consolidated = True
-            ds = xr.open_zarr(mos, consolidated=True).sel(type="mosaic")
-        except Exception:
-            self.consolidated = False
-            ds = xr.open_zarr(mos, consolidated=False).sel(type="mosaic")
+
+def get_s3_store(name, alias="imaxtgw"):
+    config = get_mc_config(alias)
+    s3 = s3fs.S3FileSystem(
+        key=config["accessKey"],
+        secret=config["secretKey"],
+        client_kwargs={"endpoint_url": config["url"]},
+    )
+    s3store = None
+    for ppath in [
+        "processed",
+        "processed0",
+        "processed1",
+        "processed2",
+        "processed3",
+        "processed4",
+    ]:
+        s3path = f"{ppath}/stpt/{name}/mos.zarr"
+        if s3.exists(s3path):
+            s3store = s3.get_mapper(s3path)
+            break
+    return s3store
+
+class StptDataset:
+    def __init__(self, sample):
+        store = get_s3_store(sample)
+        self.name = sample
+        ds = xr.open_zarr(store).sel(type="mosaic")
         try:
             levels = ds.attrs["multiscale"]["datasets"]
         except TypeError:
             levels = json.loads(ds.attrs["multiscale"])["datasets"]
         self.ds = {
-            k["level"]: xr.open_zarr(
-                mos, group=k["path"], consolidated=self.consolidated
-            ).sel(type="mosaic")
+            k["level"]: xr.open_zarr(store, group=k["path"]).sel(type="mosaic")
             for k in levels
         }
         self.ds = {k: self.ds[k] * self.bscale + self.bzero for k in self.ds}
@@ -292,8 +310,8 @@ class regrid(hd.regrid):
 
 
 class StptDataViewer:
-    def __init__(self, name, path="/data/meds1_b/processed/STPT/"):
-        self.ds = StptDataset(name, path=path)
+    def __init__(self, name):
+        self.ds = StptDataset(name)
         self.name = self.ds.name
         self.dataset = self.ds
         self.buffer = True

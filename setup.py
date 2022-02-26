@@ -16,6 +16,7 @@ requirements = [
     "scikit-image>=0.18",
     "xtiff",
     "tifffile>=2021.7.2",
+    "s3fs>=2022.2.0",
 ]
 
 extras_requirements = {"pyviz": ["matplotlib", "holoviews", "datashader"]}
