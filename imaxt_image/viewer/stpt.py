@@ -7,7 +7,6 @@ from math import ceil
 from pathlib import Path
 
 import dask
-import s3fs
 import datashader as ds
 import holoviews as hv
 import holoviews.operation.datashader as hd
@@ -19,6 +18,8 @@ from bokeh.models import HoverTool
 from bokeh.util.serialization import make_globally_unique_id
 from holoviews import streams
 from holoviews.plotting.links import RangeToolLink
+
+from imaxt_image.io.s3 import get_s3_store
 
 
 css = """
@@ -149,35 +150,6 @@ async def async_play(dv, n1, n2, step, wait, saveas):
         await asyncio.sleep(wait)
     os.system(f"ffmpeg -y -r 1 -i tmpplot_%03d.png -vcodec mpeg4 {saveas}")
 
-
-def get_mc_config(alias):
-    p = Path("~/.mc/config.json").expanduser()
-    with open(p, "r") as fh:
-        config = json.loads(fh.read())
-    return config["aliases"][alias]
-
-
-def get_s3_store(name, alias="imaxtgw"):
-    config = get_mc_config(alias)
-    s3 = s3fs.S3FileSystem(
-        key=config["accessKey"],
-        secret=config["secretKey"],
-        client_kwargs={"endpoint_url": config["url"]},
-    )
-    s3store = None
-    for ppath in [
-        "processed",
-        "processed0",
-        "processed1",
-        "processed2",
-        "processed3",
-        "processed4",
-    ]:
-        s3path = f"{ppath}/stpt/{name}/mos.zarr"
-        if s3.exists(s3path):
-            s3store = s3.get_mapper(s3path)
-            break
-    return s3store
 
 class StptDataset:
     def __init__(self, sample):
