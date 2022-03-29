@@ -348,13 +348,15 @@ class StptDataViewer:
         section = ceil(n / self.ds.nz)
         z = n - (section - 1) * self.ds.nz - 1
 
-        r = self.ds[scl][f"S{section:03d}"].sel(channel=self.channels[0], z=z).data
+        section_name = list(self.ds[scl])[section-1]
+
+        r = self.ds[scl][section_name].sel(channel=self.channels[0], z=z).data
         r = (r.clip(rlow, rhigh) - rlow) / (rhigh - rlow)
 
-        g = self.ds[scl][f"S{section:03d}"].sel(channel=self.channels[1], z=z).data
+        g = self.ds[scl][section_name].sel(channel=self.channels[1], z=z).data
         g = (g.clip(glow, ghigh) - glow) / (ghigh - glow)
 
-        b = self.ds[scl][f"S{section:03d}"].sel(channel=self.channels[2], z=z).data
+        b = self.ds[scl][section_name].sel(channel=self.channels[2], z=z).data
         b = (b.clip(blow, bhigh) - blow) / (bhigh - blow)
 
         return (r, g, b)
