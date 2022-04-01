@@ -1,5 +1,5 @@
 default:
-  image: ubuntu:18.04
+  image: docker.io/ubuntu:18.04
 
 stages:
     - test
