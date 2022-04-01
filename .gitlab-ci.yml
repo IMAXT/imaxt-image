@@ -7,30 +7,19 @@ stages:
 
 test:
   stage: test
-  tags:
-    - python
   script:
-    - pip install --user -r requirements_dev.txt
+    - pip install -r requirements_dev.txt
     - export MPLBACKEND="Agg"
-    - pip install imagecodecs-lite
-    - pip install -U "scikit-image>0.17" pooch
-    - python setup.py develop --user
-    - python setup.py flake8
-    - python setup.py build_sphinx -W
-    - python setup.py test
+    - python setup.py develop 
+    - flake8 imaxt_image
 
 deploy:
   stage: deploy
-  tags:
-    - python
   only:
     - tags
   except:
     - branches
   script:
-    - pip install --user -r requirements_dev.txt
-    - pip install imagecodecs-lite
-    - pip install -U "scikit-image>0.17" pooch
     - python setup.py sdist
     - curl -X MKCOL $REPO/imaxt-image
     - curl -XPUT $REPO/imaxt-image/imaxt-image-0.17.4.tar.gz --data-binary @dist/imaxt-image-0.17.4.tar.gz

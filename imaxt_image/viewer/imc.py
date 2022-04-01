@@ -1,14 +1,14 @@
-import numpy as np
-import xarray as xr
-import holoviews as hv
-import datashader as ds
-import pandas as pd
 import os
 
-from holoviews.operation.datashader import regrid
-from datashader.utils import ngjit
 import cv2
+import datashader as ds
+import holoviews as hv
+import numpy as np
+import pandas as pd
 import scipy
+import xarray as xr
+from datashader.utils import ngjit
+from holoviews.operation.datashader import regrid
 
 
 class IMCViewer:
@@ -530,7 +530,7 @@ class IMCViewer:
 
         self.all_images = list()
 
-        for index, row in self.channels.iterrows():
+        for _index, row in self.channels.iterrows():
             if row["good"] == 1:
                 channel = row["target"]
                 if print_nuclear_ch:

@@ -1,7 +1,7 @@
 import json
-import s3fs
-
 from pathlib import Path
+
+import s3fs
 
 
 def get_mc_config(alias):
@@ -29,7 +29,7 @@ def list_s3_store(alias="imaxtgw", instrument="stpt"):
     ]:
         try:
             this = f"{ppath}/{instrument}"
-            s3list = s3list + [a.replace(this+'/', '') for a in s3.ls(this)]
+            s3list = s3list + [a.replace(this + "/", "") for a in s3.ls(this)]
         except PermissionError:
             pass
     return s3list
@@ -56,5 +56,3 @@ def get_s3_store(name, alias="imaxtgw", instrument="stpt", extra="mos.zarr"):
             s3store = s3.get_mapper(s3path)
             break
     return s3store
-
-

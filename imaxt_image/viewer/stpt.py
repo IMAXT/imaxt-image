@@ -4,7 +4,6 @@ import os
 from contextlib import suppress
 from glob import glob
 from math import ceil
-from pathlib import Path
 
 import dask
 import datashader as ds
@@ -18,9 +17,7 @@ from bokeh.models import HoverTool
 from bokeh.util.serialization import make_globally_unique_id
 from holoviews import streams
 from holoviews.plotting.links import RangeToolLink
-
 from imaxt_image.io.s3 import get_s3_store
-
 
 css = """
 .custom-wbox > div.bk {
@@ -348,7 +345,7 @@ class StptDataViewer:
         section = ceil(n / self.ds.nz)
         z = n - (section - 1) * self.ds.nz - 1
 
-        section_name = list(self.ds[scl])[section-1]
+        section_name = list(self.ds[scl])[section - 1]
 
         r = self.ds[scl][section_name].sel(channel=self.channels[0], z=z).data
         r = (r.clip(rlow, rhigh) - rlow) / (rhigh - rlow)
@@ -398,7 +395,7 @@ class StptDataViewer:
             x2 = min(x2, self.ds.shape[1] // scl)
             y1 = max(0, y1)
             y2 = min(y2, self.ds.shape[0] // scl)
-        except:  # noqa: E722
+        except:  # noqa: E722 B001
             x1 = y1 = 0
             y2 = self.ds.shape[0] // scl
             x2 = self.ds.shape[1] // scl
